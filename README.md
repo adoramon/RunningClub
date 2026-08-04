@@ -20,10 +20,28 @@
 
 - 已完成：公积金计算规则、历史 Excel 转换、历史艺名库、封闭身份认领和头像上传代码。
 - 已完成云端操作：核心集合与历史集合创建；历史数据应通过控制台 JSON 导入，详见 [docs/historical-migration.md](docs/historical-migration.md)。
-- 待完成云端操作：部署 `get_current_user`、`suggest_historical_aliases`、`claim_historical_identity`、`save_profile_avatar`。
+- 已完成云端操作：`get_current_user`、`suggest_historical_aliases`、`claim_historical_identity`、`save_profile_avatar` 已部署到 `cloud1-d3gu11p800a6f5c2a`。
 - 下一开发阶段：建立东成西就跑团、月度承诺、公积金结算和真实看板。
 
 > 不要部署 `update_profile`。它是旧的自由昵称演示函数，不符合封闭成员准入规则。
+
+### 后续批量部署
+
+不要使用单函数的 Skill 包装命令；它会为每个函数请求一次确认。使用微信开发者工具原生 CLI 的 `cloud functions deploy --paths`，可一次提交多个函数：
+
+```bash
+/Applications/wechatwebdevtools.app/Contents/MacOS/cli cloud functions deploy \
+  --env cloud1-d3gu11p800a6f5c2a \
+  --appid wx0007e6f1f408c23f \
+  --remote-npm-install \
+  --paths \
+    /Users/gaoxiang/Documents/Codex/Projects/Running/cloudfunctions/get_current_user \
+    /Users/gaoxiang/Documents/Codex/Projects/Running/cloudfunctions/suggest_historical_aliases \
+    /Users/gaoxiang/Documents/Codex/Projects/Running/cloudfunctions/claim_historical_identity \
+    /Users/gaoxiang/Documents/Codex/Projects/Running/cloudfunctions/save_profile_avatar
+```
+
+该命令来自微信官方 CLI 的云函数批量部署能力；以后在一个开发阶段完成后统一执行，并在部署前先说明本次发布范围。
 
 ## 生产接入建议
 
