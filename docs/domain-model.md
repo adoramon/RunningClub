@@ -12,7 +12,29 @@
 
 ### users
 
-`_id`、`openid`、`nickname`、`avatarFileId`、`createdAt`、`updatedAt`
+`_id`、`openid`、`nickname`、`avatarFileId`、`historicalMemberId`、`createdAt`、`updatedAt`
+
+未认领历史身份的用户不视为跑团成员，不能读取跑量、榜单或公积金数据。
+
+### historical_members
+
+`_id`、`alias`、`normalizedAlias`、`sourceRow`、`claimStatus`、`claimedUserId`、`claimedAt`、`importBatchId`
+
+每个历史艺名一条记录。`normalizedAlias` 为去除首尾空格后的艺名，建立唯一索引。`claimStatus` 初始为 `unclaimed`；认领成功后变为 `claimed`，且不可被第二个微信用户覆盖。
+
+### historical_monthly_records
+
+`_id`、`historicalMemberId`、`month`、`targetRaw`、`actualRaw`、`targetKm`、`equivalentKm`、`fundAmount`、`recordState`、`source`、`importBatchId`
+
+每位历史成员、每个历史月份均保留一条记录，即使单元格为空。`source` 保存工作表名称、行号、承诺跑量单元格与实际跑量单元格坐标。原始值永不覆盖。
+
+建立唯一索引：`historicalMemberId + month`。
+
+### history_import_batches
+
+`_id`、`sourceFileName`、`sourceSheet`、`periodCount`、`memberCount`、`recordCount`、`createdAt`、`createdBy`、`checksum`
+
+用于审计每次历史导入，避免重复导入。
 
 ### clubs
 
@@ -64,7 +86,15 @@
 
 原 Excel 的“实际跑量”单元格同时承载公里数与“交/收 XX 元”文本。迁移时：
 
-1. 数字导入为历史等效公里数。
-2. `交/收 XX 元` 导入为历史公积金缴纳线索，保留原始文本与来源单元格。
+1. 先导入完整艺名清单，再导入每个艺名、每个月份的双单元格原始数据；空单元格也保留记录。
+2. 数字导入为历史等效公里数；`交/收 XX 元` 解析为 `fundAmount`，同时保留原始文本与来源单元格。
 3. 不足以可靠还原跑量、缺口或连续未达标次数的记录标为 `legacy_unverified`，由管理员核对；不伪造计算结果。
 4. 以 2026-07 的 `-257.00` 建立历史结转流水；2026-08 起由系统流水自动累计。
+
+## 封闭成员准入
+
+1. 用户打开小程序时只创建最小化微信身份记录，不能进入跑团业务页面。
+2. 用户填写艺名后，云函数在 `historical_members.normalizedAlias` 中精确匹配。
+3. 仅当该艺名存在且 `claimStatus` 为 `unclaimed` 时，云函数才会在同一事务内绑定 `users.historicalMemberId` 和 `historical_members.claimedUserId`。
+4. 认领后允许用户选择微信头像并上传到云存储；展示时使用 `avatarFileId`。
+5. 所有跑团数据集合保持“所有用户不可读写”，客户端只调用云函数。未认领、艺名不存在或已被认领时均不返回历史数据。

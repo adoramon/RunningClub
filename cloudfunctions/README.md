@@ -14,4 +14,5 @@
 ## 当前已实现的函数
 
 - `get_current_user`：读取或创建当前微信用户。
-- `update_profile`：保存当前用户的跑团昵称。部署后，注册页提交昵称会更新 `users` 集合中的 `nickname` 字段。
+
+> `update_profile` 是早期演示函数，不符合“仅历史成员可注册”的准入规则。请不要部署它；后续会由 `claim_historical_identity` 替代。
