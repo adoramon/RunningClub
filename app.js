@@ -18,5 +18,5 @@ App({
         return null
       })
   },
-  globalData: { clubName: '东成西就跑团', cloudEnvId: CLOUDBASE_ENV_ID, session: null, sessionPromise: null }
+  globalData: { clubName: '东成西就', cloudEnvId: CLOUDBASE_ENV_ID, session: null, sessionPromise: null }
 })
