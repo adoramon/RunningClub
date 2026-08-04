@@ -8,7 +8,7 @@ const payload = JSON.parse(await fs.readFile(inputPath, 'utf8'));
 const batchId = `legacy-import-${payload.checksum.slice(0, 16)}`;
 const writeJsonLines = async (name, documents) => {
   const text = documents.map(document => JSON.stringify(document)).join('\n') + '\n';
-  await fs.writeFile(`${outputDir}/${name}.jsonl`, text, 'utf8');
+  await fs.writeFile(`${outputDir}/${name}.json`, text, 'utf8');
 };
 
 await fs.mkdir(outputDir, { recursive: true });
