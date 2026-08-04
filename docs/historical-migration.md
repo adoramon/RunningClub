@@ -22,3 +22,7 @@
 ## 导入校验
 
 导入完成后必须核对：艺名数量、月份数量、成员月份记录数量、`交/收` 公积金文本数量，以及 2026-07 的结转余额。原始 Excel 永远保留，数据库不作为唯一原始凭据。
+
+## 控制台导入方式
+
+迁移数据由 `scripts/build-history-jsonl.mjs` 生成 UTF-8 JSON Lines 文件。对每个目标集合点击“导入”，选择 JSON 格式和 `Upsert` 模式；依次导入 `historical_members`、`historical_monthly_records`、`history_import_batches` 与 `fund_ledger`。这避免依赖云函数的在线测试时限。
