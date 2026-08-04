@@ -9,13 +9,11 @@ const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'history-data.json'
 const chunks = (items, size) => Array.from({ length: Math.ceil(items.length / size) }, (_, index) => items.slice(index * size, (index + 1) * size))
 
 async function upsertMany(collectionName, records) {
-  for (const group of chunks(records, 20)) {
-    const batch = db.batch()
-    group.forEach(record => {
+  for (const group of chunks(records, 25)) {
+    await Promise.all(group.map(async record => {
       const { _id, ...data } = record
-      batch.set(db.collection(collectionName).doc(_id), data)
-    })
-    await batch.commit()
+      await db.collection(collectionName).doc(_id).set({ data })
+    }))
   }
 }
 
