@@ -1,5 +1,5 @@
 <view class="page">
-  <view class="eyebrow">{{month}} · PROOF OF RUN</view><view class="title">提交你的<br/>本月跑量</view>
+  <view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">{{month}} · PROOF OF RUN</view></view><view class="title">提交你的<br/>本月跑量</view>
   <view class="tip"><text>●</text> 请在每月 1 日提交上月运动软件的统计截图</view>
   <view class="card form-card">
     <view class="field-label">运动记录截图</view>
