@@ -17,4 +17,4 @@
 
 > `update_profile` 是早期演示函数，不符合“仅历史成员可注册”的准入规则。请不要部署它；后续会由 `claim_historical_identity` 替代。
 
-- `import_legacy_history`：一次性导入本地生成的历史艺名和月度台账。该函数仅在数据管理员手动部署、运行一次后保留历史结果；导入数据文件不会进入 Git 仓库。
+- `import_legacy_history`：分批导入本地生成的历史艺名和月度台账。首次以 `{ "offset": 0 }` 调用，后续将返回的 `nextOffset` 作为下一次入参，直到 `completed` 为 `true`；导入数据文件不会进入 Git 仓库。
