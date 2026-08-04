@@ -1,30 +1,32 @@
-const data = require('../../services/data')
 const cloud = require('../../services/cloud')
 Page({
-  data: { name: '', target: '', editing: false },
+  data: { name: '', avatarPath: '', claimed: false },
   onLoad() {
-    const localProfile = data.getProfile()
-    if (localProfile) this.setData({ ...localProfile, editing: true })
     const app = getApp()
     if (app.globalData.sessionPromise) {
       app.globalData.sessionPromise.then(session => {
-        if (session && session.user.nickname) this.setData({ name: session.user.nickname, editing: true })
+        if (session && session.user.historicalMemberId) this.setData({ name: session.user.nickname, claimed: true })
       })
     }
   },
   input(e) { this.setData({ [e.currentTarget.dataset.field]: e.detail.value }) },
+  chooseAvatar(e) { this.setData({ avatarPath: e.detail.avatarUrl }) },
   async save() {
-    const { name, target } = this.data
+    const { name, avatarPath } = this.data
     if (!name.trim()) return wx.showToast({ title: '请填写跑团昵称', icon: 'none' })
-    if (!Number(target) || Number(target) < 1 || Number(target) > 1000) return wx.showToast({ title: '请输入 1–1000 的公里数', icon: 'none' })
     try {
       wx.showLoading({ title: '正在保存' })
-      const user = await cloud.updateProfile({ nickname: name.trim() })
+      const identity = await cloud.claimHistoricalIdentity({ alias: name.trim() })
+      let avatarFileId = ''
+      if (avatarPath) {
+        const uploaded = await wx.cloud.uploadFile({ cloudPath: `avatars/${identity.userId}/${Date.now()}.png`, filePath: avatarPath })
+        avatarFileId = uploaded.fileID
+        await cloud.saveProfileAvatar({ avatarFileId })
+      }
       const app = getApp()
-      if (app.globalData.session) app.globalData.session.user = { ...app.globalData.session.user, ...user }
-      data.saveProfile({ name: name.trim(), target: Number(target) })
+      if (app.globalData.session) app.globalData.session.user = { ...app.globalData.session.user, nickname: identity.alias, historicalMemberId: identity.historicalMemberId, avatarFileId }
       wx.hideLoading()
-      wx.showToast({ title: '资料已保存', icon: 'success' })
+      wx.showToast({ title: '身份已绑定', icon: 'success' })
       setTimeout(() => wx.navigateBack(), 700)
     } catch (error) {
       wx.hideLoading()

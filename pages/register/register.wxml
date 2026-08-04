@@ -1,9 +1,9 @@
 <view class="page">
-  <view class="eyebrow">YOUR MONTHLY PROMISE</view><view class="title">给自己一个<br/>能完成的目标</view>
-  <view class="intro muted">目标不是比较，而是帮助你稳定地跑下去。之后可随时回来更新。</view>
+  <view class="eyebrow">DONGCHENG XIJIU</view><view class="title">认领你的<br/>跑团身份</view>
+  <view class="intro muted">请填写历史台账中的艺名。每个艺名只能绑定一个微信号。</view>
   <view class="card form-card">
-    <view class="field-label">跑团昵称</view><input class="input" placeholder="例如：小北" value="{{name}}" data-field="name" bindinput="input" maxlength="12" />
-    <view class="field-label target-label">本月承诺跑量</view><view class="distance-input"><input type="number" placeholder="0" value="{{target}}" data-field="target" bindinput="input" /><text>km</text></view>
+    <view class="field-label">历史艺名</view><input class="input" placeholder="须与历史台账完全一致" value="{{name}}" data-field="name" bindinput="input" maxlength="12" />
+    <view class="field-label target-label">微信头像（可选）</view><button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar"><image wx:if="{{avatarPath}}" src="{{avatarPath}}" mode="aspectFill"/><text wx:else>选择头像</text></button>
   </view>
-  <button class="primary-btn save" bindtap="save">{{editing ? '更新承诺' : '确认我的承诺'}}</button>
+  <button class="primary-btn save" bindtap="save">{{claimed ? '确认当前身份' : '验证并绑定'}}</button>
 </view>
