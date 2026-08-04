@@ -1,22 +1,30 @@
 const cloud = require('../../services/cloud')
 Page({
-  data: { name: '', avatarPath: '', claimed: false },
+  data: { wechatNickname: '', alias: '', avatarPath: '', suggestions: [], claimed: false },
   onLoad() {
     const app = getApp()
     if (app.globalData.sessionPromise) {
       app.globalData.sessionPromise.then(session => {
-        if (session && session.user.historicalMemberId) this.setData({ name: session.user.nickname, claimed: true })
+        if (session && session.user.historicalMemberId) this.setData({ alias: session.user.nickname, claimed: true })
       })
     }
   },
   input(e) { this.setData({ [e.currentTarget.dataset.field]: e.detail.value }) },
   chooseAvatar(e) { this.setData({ avatarPath: e.detail.avatarUrl }) },
+  async findSuggestions() {
+    const { wechatNickname, avatarPath } = this.data
+    if (!wechatNickname.trim() || !avatarPath) return wx.showToast({ title: '请先填写昵称并选择头像', icon: 'none' })
+    wx.showLoading({ title: '正在匹配' })
+    try { this.setData({ suggestions: await cloud.suggestHistoricalAliases({ nickname: wechatNickname.trim() }) }) } catch (error) { wx.showToast({ title: '匹配失败，请稍后重试', icon: 'none' }) } finally { wx.hideLoading() }
+  },
+  selectAlias(e) { this.setData({ alias: e.currentTarget.dataset.alias }) },
   async save() {
-    const { name, avatarPath } = this.data
-    if (!name.trim()) return wx.showToast({ title: '请填写跑团昵称', icon: 'none' })
+    const { wechatNickname, alias, avatarPath } = this.data
+    if (!wechatNickname.trim() || !avatarPath) return wx.showToast({ title: '请先完成昵称和头像授权', icon: 'none' })
+    if (!alias.trim()) return wx.showToast({ title: '请选择或填写历史艺名', icon: 'none' })
     try {
       wx.showLoading({ title: '正在保存' })
-      const identity = await cloud.claimHistoricalIdentity({ alias: name.trim() })
+      const identity = await cloud.claimHistoricalIdentity({ alias: alias.trim(), wechatNickname: wechatNickname.trim() })
       let avatarFileId = ''
       if (avatarPath) {
         const uploaded = await wx.cloud.uploadFile({ cloudPath: `avatars/${identity.userId}/${Date.now()}.png`, filePath: avatarPath })

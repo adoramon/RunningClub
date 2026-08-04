@@ -8,7 +8,9 @@ const normalizeAlias = value => String(value || '').trim()
 exports.main = async event => {
   const { OPENID } = cloud.getWXContext()
   const alias = normalizeAlias(event.alias)
+  const wechatNickname = normalizeAlias(event.wechatNickname)
   if (!alias || alias.length > 12) throw new Error('请输入历史台账中的艺名')
+  if (!wechatNickname || wechatNickname.length > 20) throw new Error('请授权有效的微信昵称')
   const users = db.collection('users')
   const userResult = await users.where({ openid: OPENID }).limit(1).get()
   if (!userResult.data[0]) throw new Error('用户身份初始化失败，请重新打开小程序')
@@ -27,6 +29,6 @@ exports.main = async event => {
   const claimed = await members.where({ _id: member._id, claimStatus: 'unclaimed' }).update({ data: { claimStatus: 'claimed', claimedUserId: user._id, claimedAt: db.serverDate() } })
   if (!claimed.stats.updated) throw new Error('该艺名已被其他微信号绑定')
 
-  await users.doc(user._id).update({ data: { historicalMemberId: member._id, nickname: member.alias, updatedAt: db.serverDate() } })
+  await users.doc(user._id).update({ data: { historicalMemberId: member._id, nickname: member.alias, wechatNickname, updatedAt: db.serverDate() } })
   return { userId: user._id, alias: member.alias, historicalMemberId: member._id, alreadyClaimed: false }
 }

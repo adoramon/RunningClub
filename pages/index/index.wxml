@@ -1,4 +1,4 @@
-<view class="page" wx:if="{{dashboard}}">
+<view class="page" wx:if="{{authorized && dashboard}}">
   <view class="hero">
     <view class="eyebrow">{{dashboard.month}} · MONTHLY MILEAGE</view>
     <view class="title">一起把承诺<br/>跑成日常</view>
@@ -29,3 +29,4 @@
     </view>
   </view>
 </view>
+<view wx:else class="page"><view class="title">正在验证<br/>跑团身份</view><view class="muted">完成微信昵称、头像与历史艺名绑定后即可进入。</view></view>

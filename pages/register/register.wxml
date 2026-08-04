@@ -1,9 +1,12 @@
 <view class="page">
-  <view class="eyebrow">DONGCHENG XIJIU</view><view class="title">认领你的<br/>跑团身份</view>
-  <view class="intro muted">请填写历史台账中的艺名。每个艺名只能绑定一个微信号。</view>
+  <view class="eyebrow">DONGCHENG XIJIU</view><view class="title">授权并认领<br/>跑团身份</view>
+  <view class="intro muted">昵称与头像为必填项。系统会据此提供历史艺名匹配建议。</view>
   <view class="card form-card">
-    <view class="field-label">历史艺名</view><input class="input" placeholder="须与历史台账完全一致" value="{{name}}" data-field="name" bindinput="input" maxlength="12" />
-    <view class="field-label target-label">微信头像（可选）</view><button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar"><image wx:if="{{avatarPath}}" src="{{avatarPath}}" mode="aspectFill"/><text wx:else>选择头像</text></button>
+    <view class="field-label">微信昵称</view><input class="input" type="nickname" placeholder="请填写微信昵称" value="{{wechatNickname}}" data-field="wechatNickname" bindinput="input" maxlength="20" />
+    <view class="field-label target-label">微信头像</view><button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar"><image wx:if="{{avatarPath}}" src="{{avatarPath}}" mode="aspectFill"/><text wx:else>选择头像</text></button>
+    <button class="match-btn" bindtap="findSuggestions">获取艺名匹配建议</button>
+    <view wx:if="{{suggestions.length}}" class="suggestions"><view class="field-label">建议匹配</view><view wx:for="{{suggestions}}" wx:key="alias" class="suggestion {{alias === item.alias ? 'selected' : ''}}" data-alias="{{item.alias}}" bindtap="selectAlias">{{item.alias}}</view></view>
+    <view class="field-label target-label">确认历史艺名</view><input class="input" placeholder="可从建议中选择或手动填写" value="{{alias}}" data-field="alias" bindinput="input" maxlength="12" />
   </view>
   <button class="primary-btn save" bindtap="save">{{claimed ? '确认当前身份' : '验证并绑定'}}</button>
 </view>
