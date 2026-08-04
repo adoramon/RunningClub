@@ -1,5 +1,6 @@
 {
   "miniprogramRoot": "./",
+  "cloudfunctionRoot": "cloudfunctions/",
   "projectname": "run-club",
   "description": "跑步团月度承诺与跑量管理",
   "appid": "wx0007e6f1f408c23f",

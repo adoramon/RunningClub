@@ -12,6 +12,10 @@
 
 在微信开发者工具中导入此目录，AppID 可替换为自己的测试或正式 AppID。
 
+## 云开发
+
+当前开发环境为 `cloud1-d3gu11p800a6f5c2a`。首次部署的集合与云函数步骤见 [cloudfunctions/README.md](cloudfunctions/README.md)。
+
 ## 生产接入建议
 
 当前 `services/data.js` 使用 `wx.setStorageSync` 作为演示数据层。正式发布时请替换为云开发（CloudBase）或后端 API，并实现：微信登录的 `openid`、对象存储上传、服务端截图审核/里程识别，以及管理员的成员与月度记录审核。
