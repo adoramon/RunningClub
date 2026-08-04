@@ -8,6 +8,11 @@
 
 跑团规则与 CloudBase 数据模型见 [docs/domain-model.md](docs/domain-model.md)。其中已固化公积金的递增计算、运动换算规则，以及截至 2026 年 7 月 `-257.00` 元的历史结转余额。
 
+## 品牌资源
+
+- 团徽：[`assets/images/dongcheng-xijiu-logo.png`](assets/images/dongcheng-xijiu-logo.png)，用于认领页和看板品牌标识。
+- 马拉松主视觉：[`assets/images/marathon-hero.jpg`](assets/images/marathon-hero.jpg)，用于看板首页首屏；已压缩为适合小程序加载的版本。
+
 ## 本地预览
 
 在微信开发者工具中导入此目录，AppID 可替换为自己的测试或正式 AppID。

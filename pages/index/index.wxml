@@ -1,8 +1,13 @@
 <view class="page" wx:if="{{authorized && dashboard}}">
   <view class="hero">
-    <view class="eyebrow">{{dashboard.month}} · MONTHLY MILEAGE</view>
-    <view class="title">一起把承诺<br/>跑成日常</view>
-    <view class="muted">每月第一天，提交上月跑量记录。</view>
+    <image class="hero-image" src="/assets/images/marathon-hero.jpg" mode="aspectFill" />
+    <view class="hero-shade"></view>
+    <view class="hero-content">
+      <view class="brand-row"><image class="brand-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view><view class="brand-name">东成西就</view><view class="brand-subtitle">RUNNING CLUB</view></view></view>
+      <view class="eyebrow hero-eyebrow">{{dashboard.month}} · MONTHLY MILEAGE</view>
+      <view class="title hero-title">一起把承诺<br/>跑成日常</view>
+      <view class="hero-copy">每月第一天，提交上月跑量记录。</view>
+    </view>
   </view>
 
   <view class="card progress-card">
@@ -29,4 +34,4 @@
     </view>
   </view>
 </view>
-<view wx:else class="page"><view class="title">正在验证<br/>跑团身份</view><view class="muted">完成微信昵称、头像与历史艺名绑定后即可进入。</view></view>
+<view wx:else class="page gate"><image class="gate-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="title">正在验证<br/>跑团身份</view><view class="muted">完成微信昵称、头像与历史艺名绑定后即可进入。</view></view>

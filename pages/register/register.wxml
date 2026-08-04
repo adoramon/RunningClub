@@ -1,5 +1,5 @@
 <view class="page">
-  <view class="eyebrow">DONGCHENG XIJIU</view><view class="title">授权并认领<br/>跑团身份</view>
+  <view class="register-brand"><image class="register-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">DONGCHENG XIJIU</view></view><view class="title">授权并认领<br/>跑团身份</view>
   <view class="intro muted">昵称与头像为必填项。系统会据此提供历史艺名匹配建议。</view>
   <view class="card form-card">
     <view class="field-label">微信昵称</view>
