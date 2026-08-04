@@ -1,0 +1,10 @@
+page { background: #F8F7F3; color: #18251F; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+.page { padding: 32rpx 32rpx 48rpx; }
+.card { background: #FFFFFF; border-radius: 24rpx; padding: 30rpx; box-shadow: 0 8rpx 28rpx rgba(29, 53, 40, .06); }
+.eyebrow { color: #1F6F54; font-size: 23rpx; font-weight: 700; letter-spacing: 2rpx; }
+.title { font-size: 50rpx; font-weight: 800; line-height: 1.25; }
+.muted { color: #788078; font-size: 26rpx; line-height: 1.6; }
+.primary-btn { background: #1F6F54 !important; color: #FFF !important; border-radius: 14rpx; font-size: 29rpx; font-weight: 700; }
+.primary-btn::after { border: none; }
+.section-title { margin: 42rpx 0 18rpx; font-size: 32rpx; font-weight: 800; }
+.pill { display: inline-block; padding: 8rpx 18rpx; border-radius: 999rpx; background: #E4F0E9; color: #1F6F54; font-size: 23rpx; font-weight: 700; }

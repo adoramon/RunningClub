@@ -1,0 +1,31 @@
+<view class="page" wx:if="{{dashboard}}">
+  <view class="hero">
+    <view class="eyebrow">{{dashboard.month}} · MONTHLY MILEAGE</view>
+    <view class="title">一起把承诺<br/>跑成日常</view>
+    <view class="muted">每月第一天，提交上月跑量记录。</view>
+  </view>
+
+  <view class="card progress-card">
+    <view class="row"><text class="label">本月团队进度</text><text class="value">{{pct}}%</text></view>
+    <view class="track"><view class="fill" style="width: {{pct}}%"></view></view>
+    <view class="row totals"><view><text class="number">{{dashboard.totalActual}}</text><text class="unit"> km 已完成</text></view><text class="muted">目标 {{dashboard.totalTarget}} km</text></view>
+  </view>
+
+  <view wx:if="{{!dashboard.profile}}" class="card notice">
+    <view><view class="notice-title">先定一个月度目标</view><view class="muted">登记昵称与承诺跑量，加入本月看板。</view></view>
+    <button class="small-btn" bindtap="goRegister">去登记</button>
+  </view>
+  <view wx:elif="{{!dashboard.own}}" class="card notice">
+    <view><view class="notice-title">本月记录待提交</view><view class="muted">上传运动软件截图，填写截图中的里程。</view></view>
+    <button class="small-btn" bindtap="goUpload">去提交</button>
+  </view>
+
+  <view class="section-title">本月榜单</view>
+  <view class="card leaderboard">
+    <view class="member" wx:for="{{dashboard.members}}" wx:key="name">
+      <text class="rank">{{index + 1}}</text><view class="avatar">{{item.name.slice(0,1)}}</view>
+      <view class="member-info"><view>{{item.name}} <text wx:if="{{item.isMe}}" class="mine">我</text></view><view class="member-meta">承诺 {{item.target}} km</view></view>
+      <view class="member-km">{{item.actual}}<text> km</text></view>
+    </view>
+  </view>
+</view>

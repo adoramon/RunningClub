@@ -1,0 +1,11 @@
+<view class="page">
+  <view class="eyebrow">{{month}} · PROOF OF RUN</view><view class="title">提交你的<br/>本月跑量</view>
+  <view class="tip"><text>●</text> 请在每月 1 日提交上月运动软件的统计截图</view>
+  <view class="card form-card">
+    <view class="field-label">运动记录截图</view>
+    <view class="image-picker" bindtap="chooseImage"><image wx:if="{{image}}" src="{{image}}" mode="aspectFill"/><view wx:else><view class="plus">＋</view><view>从相册或相机选择</view></view></view>
+    <view class="field-label distance-label">截图中显示的跑量</view><view class="distance-input"><input type="digit" placeholder="0.00" value="{{distance}}" bindinput="input"/><text>km</text></view>
+  </view>
+  <button class="primary-btn submit" bindtap="submit">提交记录</button>
+  <view wx:if="{{submitted}}" class="done">本月已提交 {{submitted.distance}} km，可重新提交以更新记录。</view>
+</view>

@@ -1,0 +1,26 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/register/register",
+    "pages/upload/upload",
+    "pages/analysis/analysis"
+  ],
+  "window": {
+    "navigationBarTitleText": "逐风跑团",
+    "navigationBarBackgroundColor": "#F8F7F3",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F8F7F3"
+  },
+  "tabBar": {
+    "color": "#8B8F87",
+    "selectedColor": "#1F6F54",
+    "backgroundColor": "#FFFFFF",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "看板" },
+      { "pagePath": "pages/upload/upload", "text": "提交" },
+      { "pagePath": "pages/analysis/analysis", "text": "分析" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
