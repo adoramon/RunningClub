@@ -1,10 +1,10 @@
 # 东成西就微信小程序
 
-一个原生微信小程序 MVP，包含：
+一个面向封闭跑团成员的原生微信小程序。
 
-- 跑团成员登记昵称与月度承诺跑量；
-- 每月跑量截图与数字记录提交；
-- 团队完成看板、排行榜、个人历史与基础统计。
+- 历史艺名与微信账号的唯一认领；
+- 微信昵称、头像和历史跑量数据的长期绑定；
+- 月度承诺、运动凭证、公积金与数据分析（持续开发中）。
 
 跑团规则与 CloudBase 数据模型见 [docs/domain-model.md](docs/domain-model.md)。其中已固化公积金的递增计算、运动换算规则，以及截至 2026 年 7 月 `-257.00` 元的历史结转余额。
 
@@ -15,6 +15,15 @@
 ## 云开发
 
 当前开发环境为 `cloud1-d3gu11p800a6f5c2a`。首次部署的集合与云函数步骤见 [cloudfunctions/README.md](cloudfunctions/README.md)。
+
+## 当前开发阶段
+
+- 已完成：公积金计算规则、历史 Excel 转换、历史艺名库、封闭身份认领和头像上传代码。
+- 已完成云端操作：核心集合与历史集合创建；历史数据应通过控制台 JSON 导入，详见 [docs/historical-migration.md](docs/historical-migration.md)。
+- 待完成云端操作：部署 `get_current_user`、`suggest_historical_aliases`、`claim_historical_identity`、`save_profile_avatar`。
+- 下一开发阶段：建立东成西就跑团、月度承诺、公积金结算和真实看板。
+
+> 不要部署 `update_profile`。它是旧的自由昵称演示函数，不符合封闭成员准入规则。
 
 ## 生产接入建议
 
