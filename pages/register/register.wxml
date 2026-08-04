@@ -2,7 +2,8 @@
   <view class="eyebrow">DONGCHENG XIJIU</view><view class="title">授权并认领<br/>跑团身份</view>
   <view class="intro muted">昵称与头像为必填项。系统会据此提供历史艺名匹配建议。</view>
   <view class="card form-card">
-    <view class="field-label">微信昵称</view><input class="input" type="nickname" placeholder="请填写微信昵称" value="{{wechatNickname}}" data-field="wechatNickname" bindinput="input" maxlength="20" />
+    <view class="field-label">微信昵称</view>
+    <button class="nickname-picker" bindtap="authorizeNickname">{{wechatNickname || '授权读取微信昵称'}}</button>
     <view class="field-label target-label">微信头像</view><button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar"><image wx:if="{{avatarPath}}" src="{{avatarPath}}" mode="aspectFill"/><text wx:else>选择头像</text></button>
     <button class="match-btn" bindtap="findSuggestions">获取艺名匹配建议</button>
     <view wx:if="{{suggestions.length}}" class="suggestions"><view class="field-label">建议匹配</view><view wx:for="{{suggestions}}" wx:key="alias" class="suggestion {{alias === item.alias ? 'selected' : ''}}" data-alias="{{item.alias}}" bindtap="selectAlias">{{item.alias}}</view></view>

@@ -10,6 +10,17 @@ Page({
     }
   },
   input(e) { this.setData({ [e.currentTarget.dataset.field]: e.detail.value }) },
+  authorizeNickname() {
+    if (!wx.getUserProfile) {
+      wx.showToast({ title: '当前微信版本不支持昵称授权', icon: 'none' })
+      return
+    }
+    wx.getUserProfile({
+      desc: '用于匹配东成西就跑团历史艺名',
+      success: ({ userInfo }) => this.setData({ wechatNickname: userInfo.nickName || '' }),
+      fail: () => wx.showToast({ title: '需要授权微信昵称才能继续', icon: 'none' })
+    })
+  },
   chooseAvatar(e) { this.setData({ avatarPath: e.detail.avatarUrl }) },
   async findSuggestions() {
     const { wechatNickname, avatarPath } = this.data
