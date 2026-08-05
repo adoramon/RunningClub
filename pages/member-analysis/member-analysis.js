@@ -1,7 +1,7 @@
 const { getMemberHistoricalProfile } = require('../../services/cloud')
 
 Page({
-  data: { profile: null, profileName: '', records: [], average: '—', best: '—', loading: true },
+  data: { profile: null, profileName: '', historyYears: [], average: '—', best: '—', loading: true },
   async onLoad(options) {
     const memberId = options.memberId ? decodeURIComponent(options.memberId) : ''
     if (!memberId) {
@@ -13,7 +13,7 @@ Page({
       this.setData({
         profile,
         profileName: profile.displayName || profile.alias,
-        records: profile.history,
+        historyYears: profile.historyYears || [],
         average: profile.averageActualKm === null ? '—' : profile.averageActualKm,
         best: profile.bestActualKm === null ? '—' : profile.bestActualKm,
         loading: false

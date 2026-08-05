@@ -64,10 +64,30 @@ function hasParticipationData(record) {
 }
 
 function profileHistoryStatus(record) {
-  if (!isNumber(record.calculatedKm) && !isNumber(record.fundAmount)) return { actualText: '—', statusLabel: '请假缺席', statusClass: 'status-leave' }
-  if (isNumber(record.fundAmount)) return { actualText: formatKm(record.calculatedKm), statusLabel: '缴纳公积金', statusClass: 'status-fund' }
+  if (!isNumber(record.calculatedKm) && !isNumber(record.fundAmount)) return { actualText: '—', statusLabel: '请假', statusClass: 'status-leave' }
+  if (isNumber(record.fundAmount)) return { actualText: formatKm(record.calculatedKm), statusLabel: '已缴公积金', statusClass: 'status-fund' }
   if (isNumber(record.calculatedKm) && (!isNumber(record.targetKm) || record.calculatedKm >= record.targetKm)) return { actualText: formatKm(record.calculatedKm), statusLabel: '达成目标', statusClass: 'status-achieved' }
   return { actualText: formatKm(record.calculatedKm), statusLabel: '缴纳公积金', statusClass: 'status-fund' }
+}
+
+function buildHistoryYears(history) {
+  if (!history.length) return []
+  const recordsByMonth = new Map(history.map(record => [record.month, record]))
+  const firstYear = Number(history[0].month.slice(0, 4))
+  const lastYear = Number(history[history.length - 1].month.slice(0, 4))
+  const years = []
+  for (let year = lastYear; year >= firstYear; year -= 1) {
+    const months = Array.from({ length: 12 }, (_, index) => {
+      const monthNumber = index + 1
+      const month = `${year}-${String(monthNumber).padStart(2, '0')}`
+      const record = recordsByMonth.get(month)
+      return record
+        ? { ...record, monthNumber, monthShort: `${String(year).slice(2)}/${String(monthNumber).padStart(2, '0')}` }
+        : { month, monthNumber, monthShort: `${String(year).slice(2)}/${String(monthNumber).padStart(2, '0')}`, placeholder: true }
+    })
+    years.push({ year, months })
+  }
+  return years
 }
 
 function buildMemberProfile(member, linkedUser, rawRecords) {
@@ -77,16 +97,16 @@ function buildMemberProfile(member, linkedUser, rawRecords) {
   const joinedHistory = firstParticipationIndex >= 0 ? chronologicalHistory.slice(firstParticipationIndex) : []
   const actualHistory = joinedHistory.filter(record => isNumber(record.calculatedKm))
   const latestTarget = [...joinedHistory].reverse().find(record => isNumber(record.targetKm)) || null
-  const history = joinedHistory.map(record => {
+  const profileChronologicalHistory = joinedHistory.map(record => {
     const status = profileHistoryStatus(record)
     return {
       month: record.month,
-      monthShort: `${record.month.slice(2, 4)}/${record.month.slice(5, 7)}`,
       targetText: formatKm(record.targetKm),
       participationStatus: isNumber(record.targetKm) ? 'active' : 'historical_inactive',
       ...status
     }
-  }).reverse()
+  })
+  const history = [...profileChronologicalHistory].reverse()
   return {
     memberId: member.legacyMemberKey || member._id,
     alias: member.alias,
@@ -97,7 +117,8 @@ function buildMemberProfile(member, linkedUser, rawRecords) {
     latestTargetMonth: latestTarget ? latestTarget.month : null,
     averageActualKm: actualHistory.length ? round(actualHistory.reduce((sum, record) => sum + record.calculatedKm, 0) / actualHistory.length) : null,
     bestActualKm: actualHistory.length ? round(Math.max(...actualHistory.map(record => record.calculatedKm))) : null,
-    history
+    history,
+    historyYears: buildHistoryYears(profileChronologicalHistory)
   }
 }
 

@@ -8,15 +8,20 @@
 .stat text { display:block; color:#1F6F54; font-size:37rpx; font-weight:800; }
 .stat label { display:block; margin-top:8rpx; color:#788078; font-size:20rpx; }
 .empty { color:#788078; font-size:26rpx; line-height:1.7; }
-.history { padding:12rpx; }
-.history-grid { display:flex; flex-wrap:wrap; }
-.history-cell { box-sizing:border-box; width:33.333%; padding:6rpx; }
-.history-tile { min-height:142rpx; padding:16rpx 12rpx; border:1rpx solid #E9EEEA; border-radius:16rpx; background:#FAFCFA; }
-.history-month { color:#6E7E73; font-size:24rpx; font-weight:800; }
-.history-km { margin-top:10rpx; color:#1F6F54; font-size:32rpx; font-weight:900; line-height:1; }
-.history-km text { font-size:18rpx; }
-.history-status { display:inline-block; margin-top:12rpx; padding:4rpx 8rpx; border-radius:8rpx; font-size:18rpx; font-weight:700; }
-.status-achieved { border-color:#CFE8D8; }.history-status.status-achieved { background:#E2F3E7; color:#237044; }
-.status-fund { border-color:#F0DEAB; }.history-status.status-fund { background:#FFF2CF; color:#A87810; }
-.status-leave { border-color:#F1D3B6; }.history-status.status-leave { background:#FFF0E2; color:#C36E2E; }
+.history-years { margin-top:-4rpx; }
+.history-year { margin-top:28rpx; }
+.history-year:first-child { margin-top:0; }
+.history-year-label { margin:0 0 12rpx 4rpx; color:#5E7566; font-size:30rpx; font-weight:900; }
+.history-grid { display:flex; flex-wrap:wrap; margin:-5rpx; }
+.history-cell { box-sizing:border-box; width:25%; padding:5rpx; }
+.history-tile { position:relative; min-height:150rpx; overflow:hidden; padding:14rpx 10rpx; border:1rpx solid; border-radius:14rpx; }
+.history-content { position:relative; z-index:1; }
+.history-month-bg { position:absolute; top:4rpx; right:7rpx; color:rgba(255,255,255,.6); font-size:42rpx; font-weight:900; line-height:1; }
+.history-km { color:#1F6F54; font-size:29rpx; font-weight:900; line-height:1.1; word-break:break-all; }
+.history-km text { font-size:17rpx; }
+.history-status { display:inline-block; margin-top:22rpx; font-size:22rpx; font-weight:900; line-height:1.15; }
+.history-placeholder { position:relative; min-height:150rpx; overflow:hidden; border:1rpx solid #EEF1EE; border-radius:14rpx; background:#FAFBFA; }.history-placeholder .history-month-bg { color:#E3E9E3; }
+.history-tile.status-achieved { border-color:#C8E7D2; background:#EAF7EE; }.history-tile.status-achieved .history-month-bg { color:#B4E1C1; }.history-status.status-achieved { color:#247346; }
+.history-tile.status-fund { border-color:#F0D994; background:#FFF6D8; }.history-tile.status-fund .history-month-bg { color:#F4DEA4; }.history-status.status-fund { color:#A87810; }
+.history-tile.status-leave { border-color:#F0CDAF; background:#FFF0E4; }.history-tile.status-leave .history-month-bg { color:#F6D1B6; }.history-status.status-leave { color:#C36E2E; }
 .empty-state { padding-top:100rpx; }
