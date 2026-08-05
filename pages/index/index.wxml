@@ -19,12 +19,12 @@
   <view class="card fund-card">
     <view><view class="fund-label">公积金当前余额</view><view class="fund-amount">{{dashboard.fundBalanceText}} <text>元</text></view></view>
     <view class="fund-divider"></view>
-    <view><view class="fund-label">本月新增公积金</view><view class="fund-added">+{{dashboard.fundAddedThisMonthText}} <text>元</text></view></view>
+    <view><view class="fund-label">上月新增公积金</view><view class="fund-added">+{{dashboard.fundAddedLastMonthText}} <text>元</text></view></view>
   </view>
 
-  <view wx:if="{{!dashboard.myCurrentMonthSubmitted}}" class="submit-guide" bindtap="goUpload"><view><view class="submit-guide-title">本月跑量尚未提交</view><view class="submit-guide-copy">上传运动软件月度记录，加入本月排名。</view></view><view class="submit-guide-action">去提交 →</view></view>
+  <view wx:if="{{!dashboard.myLastMonthSubmitted}}" class="submit-guide" bindtap="goUpload"><view><view class="submit-guide-title">上月跑量尚未提交</view><view class="submit-guide-copy">上传上月运动软件记录，补全上月排名。</view></view><view class="submit-guide-action">去提交 →</view></view>
 
-  <view class="section-title">本月跑量排名</view>
+  <view class="section-title">上月跑量排名</view>
   <view class="card leaderboard">
     <view class="member" wx:for="{{dashboard.ranking}}" wx:key="memberId">
       <text class="rank">{{index + 1}}</text><view class="avatar"><image wx:if="{{item.avatarFileId}}" src="{{item.avatarFileId}}" mode="aspectFill"/><text wx:else>{{item.displayName.slice(0,1)}}</text></view>
