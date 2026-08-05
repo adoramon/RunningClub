@@ -16,6 +16,7 @@ function monthOffset(offset) {
 function actualDescription(record) {
   if (isNumber(record.equivalentKm)) return { actualText: formatKm(record.equivalentKm), actualNote: '实际跑量' }
   if (isNumber(record.fundAmount)) return { actualText: '—', actualNote: `公积金 ${record.fundAmount} 元` }
+  if (!isNumber(record.targetKm)) return { actualText: '—', actualNote: '当月未参与统计' }
   return { actualText: '—', actualNote: '未记录实际跑量' }
 }
 
@@ -56,7 +57,7 @@ exports.main = async () => {
 
   const totalTarget = round(summaryRows.reduce((sum, row) => sum + (row.targetKm || 0), 0))
   const totalActual = round(summaryRows.reduce((sum, row) => sum + (row.actualKm || 0), 0))
-  const ownHistory = ownRecordsResult.data.filter(record => isNumber(record.targetKm) || isNumber(record.equivalentKm) || isNumber(record.fundAmount))
+  const ownHistory = ownRecordsResult.data
   const inherited = ownHistory.find(record => record.month === currentMonth && isNumber(record.targetKm)) || ownHistory.find(record => isNumber(record.targetKm)) || null
   const actualHistory = ownHistory.filter(record => isNumber(record.equivalentKm))
   const profile = {
@@ -65,7 +66,12 @@ exports.main = async () => {
     inheritedFromMonth: inherited ? inherited.month : null,
     averageActualKm: actualHistory.length ? round(actualHistory.reduce((sum, record) => sum + record.equivalentKm, 0) / actualHistory.length) : null,
     bestActualKm: actualHistory.length ? round(Math.max(...actualHistory.map(record => record.equivalentKm))) : null,
-    history: ownHistory.map(record => ({ month: record.month, targetText: formatKm(record.targetKm), ...actualDescription(record) }))
+    history: ownHistory.map(record => ({
+      month: record.month,
+      targetText: formatKm(record.targetKm),
+      participationStatus: isNumber(record.targetKm) ? 'active' : 'historical_inactive',
+      ...actualDescription(record)
+    }))
   }
 
   return {
