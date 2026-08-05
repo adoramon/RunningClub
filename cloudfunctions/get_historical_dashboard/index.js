@@ -8,6 +8,15 @@ const round = value => Math.round(value * 100) / 100
 const formatKm = value => isNumber(value) ? String(round(value)) : '—'
 const formatMoney = value => Number(value || 0).toFixed(2)
 
+function completionTone(percent) {
+  if (percent > 120) return { toneClass: 'tone-deep-green', ringColor: '#166C43' }
+  if (percent >= 100) return { toneClass: 'tone-light-green', ringColor: '#65A36F' }
+  if (percent >= 80) return { toneClass: 'tone-deep-yellow', ringColor: '#D9A933' }
+  if (percent >= 50) return { toneClass: 'tone-light-yellow', ringColor: '#E7C668' }
+  if (percent >= 10) return { toneClass: 'tone-red', ringColor: '#D85C4F' }
+  return { toneClass: 'tone-deep-red', ringColor: '#A63A34' }
+}
+
 function monthOffset(offset) {
   const chinaNow = new Date(Date.now() + 8 * 60 * 60 * 1000)
   const date = new Date(Date.UTC(chinaNow.getUTCFullYear(), chinaNow.getUTCMonth() + offset, 1))
@@ -36,10 +45,14 @@ function deriveRecords(records) {
 }
 
 function actualDescription(record) {
-  if (isNumber(record.calculatedKm)) return { actualText: formatKm(record.calculatedKm), actualNote: record.actualSource === 'inferred_from_fund' ? '按公积金倒算' : '实际跑量' }
-  if (isNumber(record.fundAmount)) return { actualText: '—', actualNote: `公积金 ${record.fundAmount} 元` }
-  if (!isNumber(record.targetKm)) return { actualText: '—', actualNote: '当月未参与统计' }
-  return { actualText: '—', actualNote: '未记录实际跑量' }
+  if (isNumber(record.calculatedKm)) {
+    if (record.calculatedKm >= record.targetKm) return { actualText: formatKm(record.calculatedKm), actualNote: '已达成目标', actualNoteClass: 'status-completed' }
+    if (isNumber(record.fundAmount)) return { actualText: formatKm(record.calculatedKm), actualNote: '已缴纳公积金', actualNoteClass: 'status-paid' }
+    return { actualText: formatKm(record.calculatedKm), actualNote: '请尽快缴纳公积金', actualNoteClass: 'status-action' }
+  }
+  if (isNumber(record.fundAmount)) return { actualText: '—', actualNote: '已缴纳公积金', actualNoteClass: 'status-paid' }
+  if (!isNumber(record.targetKm)) return { actualText: '—', actualNote: '当月未参与统计', actualNoteClass: 'status-muted' }
+  return { actualText: '—', actualNote: '请尽快提交跑量数据', actualNoteClass: 'status-action' }
 }
 
 exports.main = async () => {
@@ -75,9 +88,11 @@ exports.main = async () => {
     const record = derivedByRecordKey.get(rawRecord.legacyRecordKey) || { ...rawRecord, calculatedKm: rawRecord.equivalentKm, actualSource: 'recorded' }
     const member = membersByKey.get(record.legacyMemberKey)
     const linkedUser = linkedUsersByMemberId.get(record.legacyMemberKey)
-    const actual = actualDescription(record)
     const targetKm = isNumber(record.targetKm) ? round(record.targetKm) : null
     const actualKm = isNumber(record.calculatedKm) ? round(record.calculatedKm) : null
+    const completionPct = targetKm ? Math.round((actualKm || 0) / targetKm * 100) : 0
+    const tone = completionTone(completionPct)
+    const actual = actualDescription(record)
     return {
       memberId: record.legacyMemberKey,
       alias: member ? member.alias : '未知成员',
@@ -88,15 +103,18 @@ exports.main = async () => {
       targetText: formatKm(record.targetKm),
       actualKm,
       actualSource: record.actualSource,
-      completionPct: targetKm ? Math.min(100, Math.round((actualKm || 0) / targetKm * 100)) : 0,
+      fundAmount: isNumber(record.fundAmount) ? record.fundAmount : 0,
+      completionPct,
+      ringPct: Math.min(100, completionPct),
+      ringStyle: `background:conic-gradient(${tone.ringColor} ${Math.min(100, completionPct)}%,#E7EDE8 0);`,
+      ...tone,
       submitted: actualKm !== null,
       ...actual,
       isMe: record.legacyMemberKey === user.historicalMemberId
     }
   }
   const summaryRows = summaryRecordsResult.data.map(memberRow).filter(row => row.targetKm !== null).sort((a, b) => {
-    if (a.actualKm === null && b.actualKm !== null) return 1
-    if (a.actualKm !== null && b.actualKm === null) return -1
+    if (b.completionPct !== a.completionPct) return b.completionPct - a.completionPct
     return (b.actualKm || 0) - (a.actualKm || 0)
   })
 
@@ -105,7 +123,7 @@ exports.main = async () => {
   const ranking = summaryRows
   const hasOpeningBalance = ledgerResult.data.some(entry => entry.entryType === 'opening_balance')
   const fundBalance = round(ledgerResult.data.reduce((sum, entry) => sum + (isNumber(entry.amount) ? entry.amount : 0), hasOpeningBalance ? 0 : -257))
-  const fundAddedLastMonth = round(ledgerResult.data.filter(entry => entry.month === summaryMonth && entry.entryType === 'member_payment' && isNumber(entry.amount) && entry.amount > 0).reduce((sum, entry) => sum + entry.amount, 0))
+  const fundAddedLastMonth = round(summaryRows.reduce((sum, row) => sum + row.fundAmount, 0))
   const ownHistory = deriveRecords(ownRecordsResult.data)
   const inherited = ownHistory.find(record => record.month === currentMonth && isNumber(record.targetKm)) || ownHistory.find(record => isNumber(record.targetKm)) || null
   const actualHistory = ownHistory.filter(record => isNumber(record.calculatedKm))
