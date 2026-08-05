@@ -1,19 +1,20 @@
 <view class="page" wx:if="{{authorized && dashboard}}">
-  <view class="hero">
-    <image class="hero-image" src="/assets/images/marathon-hero.jpg" mode="aspectFill" />
-    <view class="hero-shade"></view>
-    <view class="hero-content">
-      <view class="brand-row"><image class="brand-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view><view class="brand-name">东成西就</view><view class="brand-subtitle">RUNNING CLUB</view></view></view>
-      <view class="eyebrow hero-eyebrow">{{dashboard.summaryMonth}} · 上月团队总结</view>
-      <view class="title hero-title">一起把承诺<br/>跑成日常</view>
-      <view class="hero-copy">每月第一天，提交上月跑量记录。</view>
+  <view class="battle-card">
+    <view class="hero">
+      <image class="hero-image" src="/assets/images/marathon-hero.jpg" mode="aspectFill" />
+      <view class="hero-shade"></view>
+      <view class="hero-content">
+        <view class="brand-row"><image class="brand-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view><view class="brand-name">东成西就</view><view class="brand-subtitle">RUNNING CLUB</view></view></view>
+        <view class="eyebrow hero-eyebrow">{{dashboard.summaryMonth}} · 上月团队总结</view>
+        <view class="title hero-title">一起把承诺<br/>跑成日常</view>
+        <view class="hero-copy">每月第一天，提交上月跑量记录。</view>
+      </view>
     </view>
-  </view>
-
-  <view class="card progress-card">
-    <view class="summary-layout"><view class="summary-ring" style="{{dashboard.summaryRingStyle}}"><view class="summary-ring-core">{{dashboard.completionPct}}%</view></view><view class="summary-details"><view class="label">上月团队完成情况</view><view class="progress-people">{{dashboard.targetMemberCount}} 人有承诺 · {{dashboard.actualMemberCount}} 人已提交</view><view class="summary-totals"><view class="summary-actual"><text class="number">{{dashboard.totalActualText}}</text><text class="unit">km</text><view>上月实际跑量</view></view><view class="summary-target"><text>{{dashboard.totalTargetText}}</text><text> km</text><view>全员总承诺跑量</view></view></view></view></view>
-    <view wx:if="{{dashboard.lifetime}}" class="lifetime-inline"><view class="lifetime-inline-heading"><view class="lifetime-inline-label">东成西就累计跑量</view><view class="lifetime-inline-amount">{{dashboard.lifetime.totalKmText}} <text>km</text></view><view class="lifetime-inline-duration">{{dashboard.lifetime.operatingText}}</view></view><view class="comparison-grid compact"><view wx:for="{{dashboard.lifetime.comparisons}}" wx:key="label" class="comparison"><view class="comparison-inner"><view class="comparison-label">{{item.label}}</view><view class="comparison-value">{{item.value}}</view></view></view></view></view>
-    <view wx:else class="lifetime-inline-loading">正在汇总历史总里程…</view>
+    <view class="progress-card">
+      <view class="summary-layout"><view class="summary-ring" style="{{dashboard.summaryRingStyle}}"><view class="summary-ring-core">{{dashboard.completionPct}}%</view></view><view class="summary-details"><view class="label">上月团队完成情况</view><view class="progress-people">{{dashboard.targetMemberCount}} 人有承诺 · {{dashboard.actualMemberCount}} 人已提交</view><view class="summary-totals"><view class="summary-actual"><text class="number">{{dashboard.totalActualText}}</text><text class="unit">km</text><view>上月实际跑量</view></view><view class="summary-target"><text>{{dashboard.totalTargetText}}</text><text> km</text><view>全员总承诺跑量</view></view></view></view></view>
+      <view wx:if="{{dashboard.lifetime}}" class="lifetime-inline"><view class="lifetime-inline-heading"><view class="lifetime-inline-label">东成西就累计跑量</view><view class="lifetime-inline-amount">{{dashboard.lifetime.totalKmText}} <text>km</text></view><view class="lifetime-inline-duration">{{dashboard.lifetime.operatingText}}</view></view><view class="comparison-grid compact"><view wx:for="{{dashboard.lifetime.comparisons}}" wx:key="label" class="comparison"><view class="comparison-inner"><view class="comparison-label">{{item.label}}</view><view class="comparison-value">{{item.value}}</view></view></view></view></view>
+      <view wx:else class="lifetime-inline-loading">正在汇总历史总里程…</view>
+    </view>
   </view>
 
   <view class="card fund-card">
