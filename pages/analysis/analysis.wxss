@@ -15,7 +15,7 @@
 .history-tile { position:relative; min-height:150rpx; overflow:hidden; padding:14rpx 10rpx; border:1rpx solid; border-radius:14rpx; }
 .history-content { position:relative; z-index:1; padding-top:46rpx; }
 .history-month-bg { position:absolute; top:4rpx; right:7rpx; color:rgba(255,255,255,.6); font-size:42rpx; font-weight:900; line-height:1; }
-.history-km { color:#1F6F54; font-size:29rpx; font-weight:900; line-height:1.1; word-break:break-all; }
+.history-km { color:#1F6F54; font-size:34rpx; font-weight:900; line-height:1.1; white-space:nowrap; }
 .history-km text { font-size:17rpx; }
 .history-bottom { position:absolute; z-index:2; right:10rpx; bottom:10rpx; left:10rpx; display:flex; align-items:flex-end; justify-content:space-between; }
 .history-status-lines { font-size:22rpx; font-weight:900; line-height:1.02; }
