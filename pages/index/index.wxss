@@ -17,26 +17,26 @@
 .summary-details { min-width:0; margin-left:20rpx; flex:1; }
 .label { font-size:27rpx; font-weight:800; }
 .progress-people { margin-top:4rpx; color:rgba(255,255,255,.78); font-size:20rpx; }
-.summary-totals { display:flex; align-items:flex-end; justify-content:space-between; margin-top:8rpx; }
-.summary-actual { flex:1; }
+.summary-totals { display:flex; align-items:flex-end; margin-top:10rpx; }
+.summary-metric { min-width:0; flex:1; }
 .number { font-size:46rpx; font-weight:900; }
 .unit { margin-left:3rpx; font-size:20rpx; font-weight:700; }
-.summary-actual view,.summary-target view { margin-top:1rpx; color:rgba(255,255,255,.66); font-size:18rpx; }
-.summary-target { min-width:128rpx; padding:8rpx 12rpx; border-radius:12rpx; background:rgba(255,255,255,.13); text-align:right; font-size:29rpx; font-weight:800; }
-.summary-target text:last-of-type { font-size:18rpx; }
+.summary-metric view { margin-top:1rpx; color:rgba(255,255,255,.66); font-size:18rpx; }
+.summary-target { box-sizing:border-box; padding-left:18rpx; border-left:1rpx solid rgba(255,255,255,.26); text-align:right; }
+.summary-target-number { font-size:38rpx; font-weight:900; }
 
-.lifetime-inline { margin:20rpx -24rpx 0; padding:18rpx 24rpx 22rpx; border-radius:22rpx 22rpx 0 0; background:#F1F6F1; color:#1E4B38; }
+.lifetime-inline { margin:20rpx -24rpx 0; padding:18rpx 24rpx 22rpx; border-radius:22rpx 22rpx 0 0; background:#F6F9F6; color:#6E8173; }
 .lifetime-inline-heading { display:flex; align-items:baseline; flex-wrap:wrap; }
-.lifetime-inline-label { color:#607367; font-size:20rpx; }
-.lifetime-inline-amount { margin-left:10rpx; font-size:36rpx; font-weight:900; }
+.lifetime-inline-label { color:#8B998E; font-size:20rpx; }
+.lifetime-inline-amount { margin-left:10rpx; color:#587565; font-size:36rpx; font-weight:800; }
 .lifetime-inline-amount text { font-size:19rpx; font-weight:600; }
-.lifetime-inline-duration { margin-left:12rpx; color:#688074; font-size:19rpx; }
-.lifetime-inline-loading { margin:18rpx -24rpx 0; padding:20rpx 24rpx; border-radius:22rpx 22rpx 0 0; background:#F1F6F1; color:#688074; font-size:21rpx; }
+.lifetime-inline-duration { margin-left:12rpx; color:#98A49A; font-size:19rpx; }
+.lifetime-inline-loading { margin:18rpx -24rpx 0; padding:20rpx 24rpx; border-radius:22rpx 22rpx 0 0; background:#F6F9F6; color:#98A49A; font-size:21rpx; }
 .comparison-grid { display:flex; flex-wrap:wrap; margin:12rpx -5rpx -5rpx; }
 .comparison { box-sizing:border-box; width:50%; padding:5rpx; }
-.comparison-inner { display:flex; align-items:baseline; justify-content:space-between; padding:12rpx; border-radius:12rpx; background:#E3EEE5; }
-.comparison-label { min-width:0; color:#687B6D; font-size:18rpx; white-space:nowrap; }
-.comparison-value { flex:0 0 auto; margin-left:8rpx; color:#277451; font-size:23rpx; font-weight:800; white-space:nowrap; }
+.comparison-inner { display:flex; align-items:baseline; justify-content:space-between; padding:12rpx; border-radius:12rpx; background:#EDF3EE; }
+.comparison-label { min-width:0; color:#97A49A; font-size:18rpx; white-space:nowrap; }
+.comparison-value { flex:0 0 auto; margin-left:8rpx; color:#63816E; font-size:23rpx; font-weight:700; white-space:nowrap; }
 
 .fund-card { justify-content:space-between; padding:26rpx 30rpx; margin-top:18rpx; }
 .fund-label { color:#788078; font-size:22rpx; }
