@@ -18,6 +18,10 @@
 .history-km { color:#1F6F54; font-size:29rpx; font-weight:900; line-height:1.1; word-break:break-all; }
 .history-km text { font-size:17rpx; }
 .history-status { display:inline-block; margin-top:22rpx; font-size:22rpx; font-weight:900; line-height:1.15; }
+.calendar-ring { position:absolute; z-index:2; right:10rpx; bottom:10rpx; display:flex; align-items:center; justify-content:center; width:54rpx; height:54rpx; border-radius:50%; }
+.calendar-ring-core { display:flex; align-items:center; justify-content:center; width:40rpx; height:40rpx; border-radius:50%; background:rgba(255,255,255,.88); color:#426C53; font-size:13rpx; font-weight:900; }
+.calendar-ring-core.ring-text-wide { font-size:11rpx; }
+.history-tile.status-achieved .calendar-ring-core { color:#247346; }.history-tile.status-fund .calendar-ring-core { color:#A87810; }.history-tile.status-leave .calendar-ring-core { color:#C36E2E; }
 .history-placeholder { position:relative; min-height:150rpx; overflow:hidden; border:1rpx solid #EEF1EE; border-radius:14rpx; background:#FAFBFA; }.history-placeholder .history-month-bg { color:#E3E9E3; }
 .history-tile.status-achieved { border-color:#C8E7D2; background:#EAF7EE; }.history-tile.status-achieved .history-month-bg { color:#B4E1C1; }.history-status.status-achieved { color:#247346; }
 .history-tile.status-fund { border-color:#F0D994; background:#FFF6D8; }.history-tile.status-fund .history-month-bg { color:#F4DEA4; }.history-status.status-fund { color:#A87810; }

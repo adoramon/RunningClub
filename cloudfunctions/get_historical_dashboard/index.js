@@ -70,6 +70,17 @@ function profileHistoryStatus(record) {
   return { actualText: formatKm(record.calculatedKm), statusLabel: '缴纳公积金', statusClass: 'status-fund' }
 }
 
+function calendarRingMeta(record, statusClass) {
+  const actualKm = isNumber(record.calculatedKm) ? record.calculatedKm : 0
+  const completionPct = isNumber(record.targetKm) && record.targetKm > 0 ? Math.round(actualKm / record.targetKm * 100) : 0
+  const ringColor = statusClass === 'status-achieved' ? '#3E9962' : statusClass === 'status-fund' ? '#D3A12A' : '#D67A3B'
+  return {
+    completionPct,
+    ringTextClass: completionPct >= 100 ? 'ring-text-wide' : '',
+    ringStyle: `background:conic-gradient(${ringColor} ${Math.min(100, completionPct)}%,rgba(255,255,255,.7) 0);`
+  }
+}
+
 function buildHistoryYears(history) {
   if (!history.length) return []
   const recordsByMonth = new Map(history.map(record => [record.month, record]))
@@ -103,7 +114,8 @@ function buildMemberProfile(member, linkedUser, rawRecords) {
       month: record.month,
       targetText: formatKm(record.targetKm),
       participationStatus: isNumber(record.targetKm) ? 'active' : 'historical_inactive',
-      ...status
+      ...status,
+      ...calendarRingMeta(record, status.statusClass)
     }
   })
   const history = [...profileChronologicalHistory].reverse()
