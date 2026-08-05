@@ -14,3 +14,4 @@
 .history-km { color:#1F6F54; font-size:34rpx; font-weight:800; }
 .history-km text { font-size:22rpx; }
 .empty-state { padding-top:100rpx; }
+.status-leave { color:#6F8A98; font-weight:700; }

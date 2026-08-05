@@ -31,7 +31,7 @@ function deriveRecords(records) {
   return [...records].sort((a, b) => a.month.localeCompare(b.month)).map(record => {
     if (!isNumber(record.targetKm)) {
       failureStreak = 0
-      return { ...record, calculatedKm: null, actualSource: 'historical_inactive', failureStreak: 0 }
+      return { ...record, calculatedKm: isNumber(record.equivalentKm) ? round(record.equivalentKm) : null, actualSource: isNumber(record.equivalentKm) ? 'recorded_without_target' : 'historical_inactive', failureStreak: 0 }
     }
     if (isNumber(record.equivalentKm)) {
       if (record.equivalentKm >= record.targetKm) failureStreak = 0
@@ -49,6 +49,7 @@ function deriveRecords(records) {
 
 function actualDescription(record) {
   if (isNumber(record.calculatedKm)) {
+    if (!isNumber(record.targetKm)) return { actualText: formatKm(record.calculatedKm), actualNote: '未纳入团队统计', actualNoteClass: 'status-muted' }
     if (record.calculatedKm >= record.targetKm) return { actualText: formatKm(record.calculatedKm), actualNote: '已达成目标', actualNoteClass: 'status-completed' }
     if (isNumber(record.fundAmount)) return { actualText: formatKm(record.calculatedKm), actualNote: '已缴纳公积金', actualNoteClass: 'status-paid' }
     return { actualText: formatKm(record.calculatedKm), actualNote: '请尽快缴纳公积金', actualNoteClass: 'status-action' }
@@ -56,6 +57,44 @@ function actualDescription(record) {
   if (isNumber(record.fundAmount)) return { actualText: '—', actualNote: '已缴纳公积金', actualNoteClass: 'status-paid' }
   if (!isNumber(record.targetKm)) return { actualText: '—', actualNote: '当月未参与统计', actualNoteClass: 'status-muted' }
   return { actualText: '—', actualNote: '请尽快提交跑量数据', actualNoteClass: 'status-action' }
+}
+
+function hasParticipationData(record) {
+  return isNumber(record.targetKm) || isNumber(record.equivalentKm) || isNumber(record.fundAmount)
+}
+
+function buildMemberProfile(member, linkedUser, rawRecords) {
+  const currentMonth = monthOffset(0)
+  const chronologicalHistory = deriveRecords(rawRecords).filter(record => record.month < currentMonth)
+  const firstParticipationIndex = chronologicalHistory.findIndex(hasParticipationData)
+  const joinedHistory = firstParticipationIndex >= 0 ? chronologicalHistory.slice(firstParticipationIndex) : []
+  const actualHistory = joinedHistory.filter(record => isNumber(record.calculatedKm))
+  const latestTarget = [...joinedHistory].reverse().find(record => isNumber(record.targetKm)) || null
+  const lastIndex = joinedHistory.length - 1
+  const history = joinedHistory.map((record, index) => {
+    const isMiddleBlank = index > 0 && index < lastIndex && !isNumber(record.calculatedKm) && !isNumber(record.fundAmount)
+    const description = isMiddleBlank
+      ? { actualText: '—', actualNote: '请假', actualNoteClass: 'status-leave' }
+      : actualDescription(record)
+    return {
+      month: record.month,
+      targetText: formatKm(record.targetKm),
+      participationStatus: isNumber(record.targetKm) ? 'active' : 'historical_inactive',
+      ...description
+    }
+  }).reverse()
+  return {
+    memberId: member.legacyMemberKey || member._id,
+    alias: member.alias,
+    displayName: linkedUser ? (linkedUser.wechatNickname || linkedUser.nickname || member.alias) : member.alias,
+    avatarFileId: linkedUser ? (linkedUser.avatarFileId || '') : '',
+    registered: Boolean(linkedUser),
+    latestTargetKm: latestTarget ? round(latestTarget.targetKm) : null,
+    latestTargetMonth: latestTarget ? latestTarget.month : null,
+    averageActualKm: actualHistory.length ? round(actualHistory.reduce((sum, record) => sum + record.calculatedKm, 0) / actualHistory.length) : null,
+    bestActualKm: actualHistory.length ? round(Math.max(...actualHistory.map(record => record.calculatedKm))) : null,
+    history
+  }
 }
 
 function buildLifetimeStats(records) {
@@ -99,27 +138,7 @@ async function getMemberProfile(memberId) {
   const member = memberResult.data
   if (!member) throw new Error('未找到该成员的历史记录')
   const linkedUser = linkedUserResult.data[0]
-  const history = deriveRecords(recordsResult.data)
-  const currentMonth = monthOffset(0)
-  const inherited = history.find(record => record.month === currentMonth && isNumber(record.targetKm)) || history.find(record => isNumber(record.targetKm)) || null
-  const actualHistory = history.filter(record => isNumber(record.calculatedKm))
-  return {
-    memberId,
-    alias: member.alias,
-    displayName: linkedUser ? (linkedUser.wechatNickname || linkedUser.nickname || member.alias) : member.alias,
-    avatarFileId: linkedUser ? (linkedUser.avatarFileId || '') : '',
-    registered: Boolean(linkedUser),
-    inheritedTargetKm: inherited ? round(inherited.targetKm) : null,
-    inheritedFromMonth: inherited ? inherited.month : null,
-    averageActualKm: actualHistory.length ? round(actualHistory.reduce((sum, record) => sum + record.calculatedKm, 0) / actualHistory.length) : null,
-    bestActualKm: actualHistory.length ? round(Math.max(...actualHistory.map(record => record.calculatedKm))) : null,
-    history: history.map(record => ({
-      month: record.month,
-      targetText: formatKm(record.targetKm),
-      participationStatus: isNumber(record.targetKm) ? 'active' : 'historical_inactive',
-      ...actualDescription(record)
-    }))
-  }
+  return buildMemberProfile(member, linkedUser, recordsResult.data)
 }
 
 exports.main = async (event = {}) => {
@@ -195,22 +214,7 @@ exports.main = async (event = {}) => {
   const hasOpeningBalance = ledgerResult.data.some(entry => entry.entryType === 'opening_balance')
   const fundBalance = round(ledgerResult.data.reduce((sum, entry) => sum + (isNumber(entry.amount) ? entry.amount : 0), hasOpeningBalance ? 0 : -257))
   const fundAddedLastMonth = round(summaryRows.reduce((sum, row) => sum + row.fundAmount, 0))
-  const ownHistory = deriveRecords(ownRecordsResult.data)
-  const inherited = ownHistory.find(record => record.month === currentMonth && isNumber(record.targetKm)) || ownHistory.find(record => isNumber(record.targetKm)) || null
-  const actualHistory = ownHistory.filter(record => isNumber(record.calculatedKm))
-  const profile = {
-    alias: memberResult.data.alias,
-    inheritedTargetKm: inherited ? round(inherited.targetKm) : null,
-    inheritedFromMonth: inherited ? inherited.month : null,
-    averageActualKm: actualHistory.length ? round(actualHistory.reduce((sum, record) => sum + record.calculatedKm, 0) / actualHistory.length) : null,
-    bestActualKm: actualHistory.length ? round(Math.max(...actualHistory.map(record => record.calculatedKm))) : null,
-    history: ownHistory.map(record => ({
-      month: record.month,
-      targetText: formatKm(record.targetKm),
-      participationStatus: isNumber(record.targetKm) ? 'active' : 'historical_inactive',
-      ...actualDescription(record)
-    }))
-  }
+  const profile = buildMemberProfile(memberResult.data, user, ownRecordsResult.data)
 
   const completionPct = totalTarget ? Math.round(totalActual / totalTarget * 100) : 0
   const summaryTone = completionTone(completionPct)
