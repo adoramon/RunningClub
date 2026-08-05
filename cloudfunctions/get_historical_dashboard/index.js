@@ -64,10 +64,10 @@ function hasParticipationData(record) {
 }
 
 function profileHistoryStatus(record) {
-  if (!isNumber(record.calculatedKm) && !isNumber(record.fundAmount)) return { actualText: '—', statusLabel: '请假', statusClass: 'status-leave' }
-  if (isNumber(record.fundAmount)) return { actualText: formatKm(record.calculatedKm), statusLabel: '已缴公积金', statusClass: 'status-fund' }
-  if (isNumber(record.calculatedKm) && (!isNumber(record.targetKm) || record.calculatedKm >= record.targetKm)) return { actualText: formatKm(record.calculatedKm), statusLabel: '达成目标', statusClass: 'status-achieved' }
-  return { actualText: formatKm(record.calculatedKm), statusLabel: '缴纳公积金', statusClass: 'status-fund' }
+  if (!isNumber(record.calculatedKm) && !isNumber(record.fundAmount)) return { actualText: '—', statusLabel: '提前请假', statusTop: '提前', statusBottom: '请假', statusClass: 'status-leave' }
+  if (isNumber(record.fundAmount)) return { actualText: formatKm(record.calculatedKm), statusLabel: '已缴基金', statusTop: '已缴', statusBottom: '基金', statusClass: 'status-fund' }
+  if (isNumber(record.calculatedKm) && (!isNumber(record.targetKm) || record.calculatedKm >= record.targetKm)) return { actualText: formatKm(record.calculatedKm), statusLabel: '达成目标', statusTop: '达成', statusBottom: '目标', statusClass: 'status-achieved' }
+  return { actualText: formatKm(record.calculatedKm), statusLabel: '已缴基金', statusTop: '已缴', statusBottom: '基金', statusClass: 'status-fund' }
 }
 
 function calendarRingMeta(record, statusClass) {
