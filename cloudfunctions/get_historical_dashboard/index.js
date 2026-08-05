@@ -101,6 +101,19 @@ function buildHistoryYears(history) {
   return years
 }
 
+function buildRecentTrend(joinedHistory) {
+  const recordsByMonth = new Map(joinedHistory.map(record => [record.month, record]))
+  return Array.from({ length: 24 }, (_, index) => {
+    const month = monthOffset(index - 24)
+    const record = recordsByMonth.get(month)
+    return {
+      month,
+      label: `${month.slice(2, 4)}/${month.slice(5, 7)}`,
+      actualKm: record && isNumber(record.calculatedKm) ? round(record.calculatedKm) : null
+    }
+  })
+}
+
 function buildMemberProfile(member, linkedUser, rawRecords) {
   const currentMonth = monthOffset(0)
   const chronologicalHistory = deriveRecords(rawRecords).filter(record => record.month < currentMonth)
@@ -129,6 +142,9 @@ function buildMemberProfile(member, linkedUser, rawRecords) {
     latestTargetMonth: latestTarget ? latestTarget.month : null,
     averageActualKm: actualHistory.length ? round(actualHistory.reduce((sum, record) => sum + record.calculatedKm, 0) / actualHistory.length) : null,
     bestActualKm: actualHistory.length ? round(Math.max(...actualHistory.map(record => record.calculatedKm))) : null,
+    totalActualKm: round(actualHistory.reduce((sum, record) => sum + record.calculatedKm, 0)),
+    totalFundAmount: round(joinedHistory.reduce((sum, record) => sum + (isNumber(record.fundAmount) ? record.fundAmount : 0), 0)),
+    recentTrend: buildRecentTrend(joinedHistory),
     history,
     historyYears: buildHistoryYears(profileChronologicalHistory)
   }

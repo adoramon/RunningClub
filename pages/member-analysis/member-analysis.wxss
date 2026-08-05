@@ -4,9 +4,19 @@
 .unregistered { margin-top:4rpx; color:#9AA39B; font-size:19rpx; }
 .title { margin:14rpx 0 34rpx; }
 .stats { display:flex; gap:14rpx; }
+.stats-secondary { margin-top:14rpx; }
 .stat { flex:1; padding:22rpx 12rpx; text-align:center; }
 .stat text { display:block; color:#1F6F54; font-size:37rpx; font-weight:800; }
 .stat label { display:block; margin-top:8rpx; color:#788078; font-size:20rpx; }
+.stats-secondary .stat { padding:20rpx 14rpx; text-align:left; }
+.stats-secondary .stat text { font-size:34rpx; }
+.stats-secondary .stat label { font-size:19rpx; }
+.trend-card { margin-top:24rpx; padding:24rpx 20rpx 12rpx; overflow:hidden; background:linear-gradient(145deg,#FFFFFF 0%,#F0F8F3 100%); }
+.trend-heading { display:flex; align-items:flex-start; justify-content:space-between; }
+.trend-title { color:#245D45; font-size:30rpx; font-weight:900; }
+.trend-note { margin-top:5rpx; color:#8A9C90; font-size:20rpx; }
+.trend-chip { padding:7rpx 12rpx; border-radius:999rpx; background:#DDEFE3; color:#347857; font-size:19rpx; font-weight:800; }
+.trend-canvas { display:block; width:100%; height:310rpx; margin-top:6rpx; }
 .empty { color:#788078; font-size:26rpx; line-height:1.7; }
 .history-years { margin-top:-4rpx; }
 .history-year { margin-top:28rpx; }
