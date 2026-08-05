@@ -65,8 +65,7 @@ function buildLifetimeStats(records) {
     { label: '绕赤道', value: `${formatRatio(totalKm / 40075)} 圈`, note: '赤道约 40,075 km' },
     { label: '北京—上海往返', value: `${formatRatio(totalKm / 2400)} 趟`, note: '按往返约 2,400 km' },
     { label: '北京—广州往返', value: `${formatRatio(totalKm / 4200)} 趟`, note: '按往返约 4,200 km' },
-    { label: '北京—拉萨往返', value: `${formatRatio(totalKm / 7500)} 趟`, note: '按往返约 7,500 km' },
-    { label: '地月往返', value: `${formatRatio(totalKm / 768800)} 次`, note: '按往返约 768,800 km' }
+    { label: '北京—拉萨往返', value: `${formatRatio(totalKm / 7500)} 趟`, note: '按往返约 7,500 km' }
   ]
   return { totalKm, totalKmText: formatTotalKm(totalKm), countedRecords: counted.length, comparisons }
 }
