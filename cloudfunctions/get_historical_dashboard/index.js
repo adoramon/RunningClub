@@ -6,6 +6,7 @@ const db = cloud.database()
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 const round = value => Math.round(value * 100) / 100
 const formatKm = value => isNumber(value) ? String(round(value)) : '—'
+const formatMoney = value => Number(value || 0).toFixed(2)
 
 function monthOffset(offset) {
   const chinaNow = new Date(Date.now() + 8 * 60 * 60 * 1000)
@@ -48,17 +49,21 @@ exports.main = async () => {
   const user = userResult.data[0]
   if (!user || !user.historicalMemberId) throw new Error('请先完成历史艺名认领')
 
-  const [memberResult, summaryRecordsResult, allMembersResult, ownRecordsResult] = await Promise.all([
+  const [memberResult, summaryRecordsResult, currentRecordsResult, allMembersResult, ownRecordsResult, linkedUsersResult, ledgerResult] = await Promise.all([
     db.collection('historical_members').doc(user.historicalMemberId).get(),
     db.collection('historical_monthly_records').where({ month: monthOffset(-1) }).limit(100).get(),
+    db.collection('historical_monthly_records').where({ month: monthOffset(0) }).limit(100).get(),
     db.collection('historical_members').limit(100).get(),
-    db.collection('historical_monthly_records').where({ legacyMemberKey: user.historicalMemberId }).orderBy('month', 'desc').limit(100).get()
+    db.collection('historical_monthly_records').where({ legacyMemberKey: user.historicalMemberId }).orderBy('month', 'desc').limit(100).get(),
+    db.collection('users').field({ historicalMemberId: true, nickname: true, wechatNickname: true, avatarFileId: true }).limit(100).get(),
+    db.collection('fund_ledger').where({ status: 'confirmed' }).limit(100).get()
   ])
 
   const summaryMonth = monthOffset(-1)
   const currentMonth = monthOffset(0)
   const membersByKey = new Map(allMembersResult.data.map(member => [member.legacyMemberKey || member._id, member]))
-  const memberIdsNeedingDerivation = new Set(summaryRecordsResult.data.filter(record => isNumber(record.fundAmount)).map(record => record.legacyMemberKey))
+  const linkedUsersByMemberId = new Map(linkedUsersResult.data.filter(linkedUser => linkedUser.historicalMemberId).map(linkedUser => [linkedUser.historicalMemberId, linkedUser]))
+  const memberIdsNeedingDerivation = new Set([...summaryRecordsResult.data, ...currentRecordsResult.data].filter(record => isNumber(record.fundAmount)).map(record => record.legacyMemberKey))
   memberIdsNeedingDerivation.add(user.historicalMemberId)
   const histories = new Map([[user.historicalMemberId, ownRecordsResult.data]])
   await Promise.all([...memberIdsNeedingDerivation].filter(memberId => memberId !== user.historicalMemberId).map(async memberId => {
@@ -67,21 +72,30 @@ exports.main = async () => {
   }))
   const derivedByRecordKey = new Map()
   histories.forEach(history => deriveRecords(history).forEach(record => derivedByRecordKey.set(record.legacyRecordKey, record)))
-  const summaryRows = summaryRecordsResult.data.map(rawRecord => {
+  const memberRow = rawRecord => {
     const record = derivedByRecordKey.get(rawRecord.legacyRecordKey) || { ...rawRecord, calculatedKm: rawRecord.equivalentKm, actualSource: 'recorded' }
     const member = membersByKey.get(record.legacyMemberKey)
+    const linkedUser = linkedUsersByMemberId.get(record.legacyMemberKey)
     const actual = actualDescription(record)
+    const targetKm = isNumber(record.targetKm) ? round(record.targetKm) : null
+    const actualKm = isNumber(record.calculatedKm) ? round(record.calculatedKm) : null
     return {
       memberId: record.legacyMemberKey,
       alias: member ? member.alias : '未知成员',
-      targetKm: isNumber(record.targetKm) ? round(record.targetKm) : null,
+      displayName: linkedUser ? (linkedUser.wechatNickname || linkedUser.nickname || member.alias) : member.alias,
+      avatarFileId: linkedUser ? (linkedUser.avatarFileId || '') : '',
+      registered: Boolean(linkedUser),
+      targetKm,
       targetText: formatKm(record.targetKm),
-      actualKm: isNumber(record.calculatedKm) ? round(record.calculatedKm) : null,
+      actualKm,
       actualSource: record.actualSource,
+      completionPct: targetKm ? Math.min(100, Math.round((actualKm || 0) / targetKm * 100)) : 0,
+      submitted: actualKm !== null,
       ...actual,
       isMe: record.legacyMemberKey === user.historicalMemberId
     }
-  }).filter(row => row.targetKm !== null).sort((a, b) => {
+  }
+  const summaryRows = summaryRecordsResult.data.map(memberRow).filter(row => row.targetKm !== null).sort((a, b) => {
     if (a.actualKm === null && b.actualKm !== null) return 1
     if (a.actualKm !== null && b.actualKm === null) return -1
     return (b.actualKm || 0) - (a.actualKm || 0)
@@ -89,6 +103,14 @@ exports.main = async () => {
 
   const totalTarget = round(summaryRows.reduce((sum, row) => sum + (row.targetKm || 0), 0))
   const totalActual = round(summaryRows.reduce((sum, row) => sum + (row.actualKm || 0), 0))
+  const ranking = currentRecordsResult.data.map(memberRow).filter(row => row.targetKm !== null).sort((a, b) => {
+    if (a.actualKm === null && b.actualKm !== null) return 1
+    if (a.actualKm !== null && b.actualKm === null) return -1
+    return (b.actualKm || 0) - (a.actualKm || 0)
+  })
+  const hasOpeningBalance = ledgerResult.data.some(entry => entry.entryType === 'opening_balance')
+  const fundBalance = round(ledgerResult.data.reduce((sum, entry) => sum + (isNumber(entry.amount) ? entry.amount : 0), hasOpeningBalance ? 0 : -257))
+  const fundAddedThisMonth = round(ledgerResult.data.filter(entry => entry.month === currentMonth && entry.entryType === 'member_payment' && isNumber(entry.amount) && entry.amount > 0).reduce((sum, entry) => sum + entry.amount, 0))
   const ownHistory = deriveRecords(ownRecordsResult.data)
   const inherited = ownHistory.find(record => record.month === currentMonth && isNumber(record.targetKm)) || ownHistory.find(record => isNumber(record.targetKm)) || null
   const actualHistory = ownHistory.filter(record => isNumber(record.calculatedKm))
@@ -117,7 +139,13 @@ exports.main = async () => {
     totalActual,
     totalActualText: formatKm(totalActual),
     completionPct: totalTarget ? Math.round(totalActual / totalTarget * 100) : 0,
+    fundBalance,
+    fundBalanceText: formatMoney(fundBalance),
+    fundAddedThisMonth,
+    fundAddedThisMonthText: formatMoney(fundAddedThisMonth),
     members: summaryRows,
+    ranking,
+    myCurrentMonthSubmitted: Boolean(ranking.find(row => row.isMe && row.submitted)),
     profile
   }
 }

@@ -11,23 +11,25 @@
   </view>
 
   <view class="card progress-card">
-    <view class="row"><text class="label">上月团队完成情况</text><text class="value">{{pct}}%</text></view>
+    <view class="row"><text class="label">上月团队完成情况</text><text class="progress-people">{{dashboard.targetMemberCount}} 人有承诺 · {{dashboard.actualMemberCount}} 人已提交</text></view>
     <view class="track"><view class="fill" style="width: {{pct}}%"></view></view>
     <view class="row totals"><view><text class="number">{{dashboard.totalActualText}}</text><text class="unit"> km 实际跑量</text></view><text class="muted">承诺 {{dashboard.totalTargetText}} km</text></view>
-    <view class="progress-note">{{dashboard.totalMembers}} 人历史记录 · {{dashboard.targetMemberCount}} 人有承诺 · {{dashboard.actualMemberCount}} 人有可统计跑量（含公积金倒算）</view>
   </view>
 
-  <view class="card notice">
-    <view><view class="notice-title">本月承诺自动继承</view><view class="muted" wx:if="{{dashboard.profile.inheritedTargetKm !== null}}">{{dashboard.currentMonth}} 承诺 {{dashboard.profile.inheritedTargetKm}} km，继承自历史台账{{dashboard.profile.inheritedFromMonth === dashboard.currentMonth ? '' : '（最近一次：' + dashboard.profile.inheritedFromMonth + '）'}}。</view><view class="muted" wx:else>历史台账未找到你的承诺跑量，请联系管理员补录。</view></view>
-    <button class="small-btn" bindtap="goUpload">去提交</button>
+  <view class="card fund-card">
+    <view><view class="fund-label">公积金当前余额</view><view class="fund-amount">{{dashboard.fundBalanceText}} <text>元</text></view></view>
+    <view class="fund-divider"></view>
+    <view><view class="fund-label">本月新增公积金</view><view class="fund-added">+{{dashboard.fundAddedThisMonthText}} <text>元</text></view></view>
   </view>
 
-  <view class="section-title">{{dashboard.summaryMonth}} 全体历史记录</view>
+  <view wx:if="{{!dashboard.myCurrentMonthSubmitted}}" class="submit-guide" bindtap="goUpload"><view><view class="submit-guide-title">本月跑量尚未提交</view><view class="submit-guide-copy">上传运动软件月度记录，加入本月排名。</view></view><view class="submit-guide-action">去提交 →</view></view>
+
+  <view class="section-title">本月跑量排名</view>
   <view class="card leaderboard">
-    <view class="member" wx:for="{{dashboard.members}}" wx:key="memberId">
-      <text class="rank">{{index + 1}}</text><view class="avatar">{{item.alias.slice(0,1)}}</view>
-      <view class="member-info"><view>{{item.alias}} <text wx:if="{{item.isMe}}" class="mine">我</text></view><view class="member-meta">承诺 {{item.targetText}} km · {{item.actualNote}}</view></view>
-      <view class="member-km">{{item.actualText}}<text wx:if="{{item.actualText !== '—'}}"> km</text></view>
+    <view class="member" wx:for="{{dashboard.ranking}}" wx:key="memberId">
+      <text class="rank">{{index + 1}}</text><view class="avatar"><image wx:if="{{item.avatarFileId}}" src="{{item.avatarFileId}}" mode="aspectFill"/><text wx:else>{{item.displayName.slice(0,1)}}</text></view>
+      <view class="member-info"><view>{{item.displayName}} <text wx:if="{{item.isMe}}" class="mine">我</text><text wx:if="{{!item.registered}}" class="unregistered">○ 未注册</text></view><view class="member-meta">承诺 {{item.targetText}} km · {{item.actualNote}}</view></view>
+      <view class="member-progress"><view class="ring" style="background: conic-gradient(#1F6F54 {{item.completionPct}}%, #E7EDE8 0);"><view class="ring-core">{{item.completionPct}}%</view></view><view class="member-km">{{item.actualText}}<text wx:if="{{item.actualText !== '—'}}"> km</text></view></view>
     </view>
   </view>
 </view>
