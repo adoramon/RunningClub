@@ -19,12 +19,13 @@
 .label { font-size:30rpx; font-weight:900; white-space:nowrap; }
 .progress-people { color:rgba(255,255,255,.8); font-size:19rpx; white-space:nowrap; }
 .summary-totals { display:flex; align-items:flex-end; margin-top:12rpx; }
-.summary-metric { min-width:0; flex:1; text-align:center; }
+.summary-metric { box-sizing:border-box; min-width:0; flex:1; }
+.summary-actual { padding-right:20rpx; text-align:right; }
 .summary-divider { align-self:stretch; width:1rpx; margin:0 16rpx 2rpx; background:rgba(255,255,255,.32); }
 .number { font-size:42rpx; font-weight:900; }
 .unit { margin-left:3rpx; font-size:20rpx; font-weight:700; }
 .summary-metric view { margin-top:1rpx; color:rgba(255,255,255,.66); font-size:18rpx; }
-.summary-target { box-sizing:border-box; text-align:center; }
+.summary-target { padding-left:20rpx; text-align:left; }
 
 .lifetime-inline { margin:20rpx -24rpx 0; padding:18rpx 24rpx 22rpx; border-radius:22rpx 22rpx 0 0; background:#F6F9F6; color:#6E8173; }
 .lifetime-inline-heading { display:flex; align-items:baseline; flex-wrap:wrap; }
