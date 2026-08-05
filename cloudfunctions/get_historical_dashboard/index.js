@@ -60,6 +60,7 @@ function actualDescription(record) {
 
 function buildLifetimeStats(records) {
   const counted = records.filter(record => isNumber(record.targetKm) && isNumber(record.calculatedKm))
+  const activeMonths = records.filter(record => isNumber(record.targetKm)).map(record => record.month).sort()
   const totalKm = round(counted.reduce((sum, record) => sum + record.calculatedKm, 0))
   const comparisons = [
     { label: '绕赤道', value: `${formatRatio(totalKm / 40075)} 圈`, note: '赤道约 40,075 km' },
@@ -67,7 +68,12 @@ function buildLifetimeStats(records) {
     { label: '北京—广州往返', value: `${formatRatio(totalKm / 4200)} 趟`, note: '按往返约 4,200 km' },
     { label: '北京—拉萨往返', value: `${formatRatio(totalKm / 7500)} 趟`, note: '按往返约 7,500 km' }
   ]
-  return { totalKm, totalKmText: formatTotalKm(totalKm), countedRecords: counted.length, comparisons }
+  const startMonth = activeMonths[0]
+  const [startYear, startMonthNumber] = startMonth.split('-').map(Number)
+  const [currentYear, currentMonthNumber] = monthOffset(0).split('-').map(Number)
+  const elapsedMonths = Math.max(0, (currentYear - startYear) * 12 + currentMonthNumber - startMonthNumber)
+  const operatingText = `已运营 ${Math.floor(elapsedMonths / 12)}年${elapsedMonths % 12}个月`
+  return { totalKm, totalKmText: formatTotalKm(totalKm), operatingText, comparisons }
 }
 
 async function getLifetimeStats() {
@@ -186,7 +192,7 @@ exports.main = async (event = {}) => {
     totalActualText: formatKm(totalActual),
     completionPct,
     summaryToneClass: summaryTone.toneClass,
-    summaryRingStyle: `background:conic-gradient(${summaryTone.ringColor} ${Math.min(100, completionPct)}%,rgba(255,255,255,.22) 0);`,
+    summaryRingStyle: `background:conic-gradient(#F6C94C ${Math.min(100, completionPct)}%,rgba(255,255,255,.18) 0);`,
     fundBalance,
     fundBalanceText: formatMoney(fundBalance),
     fundAddedLastMonth,
