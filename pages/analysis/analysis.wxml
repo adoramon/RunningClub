@@ -1,8 +1,8 @@
 <view class="page">
-  <view wx:if="{{profile}}"><view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">{{profileName}} · RUNNING INSIGHTS</view></view><view class="title">你的跑步节奏</view>
-    <view class="stats"><view class="stat card"><text>{{profile.target}}</text><label>本月承诺 km</label></view><view class="stat card"><text>{{average}}</text><label>月均提交 km</label></view><view class="stat card"><text>{{best}}</text><label>最高纪录 km</label></view></view>
-    <view class="section-title">提交历史</view><view class="card empty" wx:if="{{!records.length}}">还没有跑量记录。完成首次提交后，这里会显示你的趋势。</view>
-    <view class="card history" wx:else><view wx:for="{{records}}" wx:key="month" class="history-row"><view><view class="history-month">{{item.month}}</view><view class="muted">已提交跑量</view></view><view class="history-km">{{item.distance}} <text>km</text></view></view></view>
+  <view wx:if="{{profile}}"><view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">{{profileName}} · 历史跑量分析</view></view><view class="title">你的跑步节奏</view>
+    <view class="stats"><view class="stat card"><text>{{profile.inheritedTargetKm === null ? '—' : profile.inheritedTargetKm}}</text><label>本月继承承诺 km</label></view><view class="stat card"><text>{{average}}</text><label>历史月均 km</label></view><view class="stat card"><text>{{best}}</text><label>历史最高 km</label></view></view>
+    <view class="section-title">历史记录</view><view class="card empty" wx:if="{{!records.length}}">历史台账中还没有你的有效跑量记录。</view>
+    <view class="card history" wx:else><view wx:for="{{records}}" wx:key="month" class="history-row"><view><view class="history-month">{{item.month}}</view><view class="muted">承诺 {{item.targetText}} km · {{item.actualNote}}</view></view><view class="history-km">{{item.actualText}}<text wx:if="{{item.actualText !== '—'}}"> km</text></view></view></view>
   </view>
   <view wx:else class="empty-state"><view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">DONGCHENG XIJIU</view></view><view class="title">从一个目标<br/>开始</view><view class="muted">完成登记后，即可查看个人跑量分析。</view><button class="primary-btn" bindtap="goRegister">登记承诺</button></view>
 </view>

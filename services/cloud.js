@@ -14,4 +14,8 @@ function saveProfileAvatar({ avatarFileId }) {
   return wx.cloud.callFunction({ name: 'save_profile_avatar', data: { avatarFileId } }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar }
+function getHistoricalDashboard() {
+  return wx.cloud.callFunction({ name: 'get_historical_dashboard' }).then(result => result.result)
+}
+
+module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard }

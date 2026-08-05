@@ -26,9 +26,10 @@
 ## 当前开发阶段
 
 - 已完成：公积金计算规则、历史 Excel 转换、历史艺名库、封闭身份认领和头像上传；已完成一次完整认领链路验证。
+- 已完成：历史真实看板。首页展示上一个完整月的团队承诺与实际跑量汇总、有效成员明细；分析页展示当前认领成员的真实历史记录。本月承诺自动继承该成员历史台账中当前月或最近一次有效承诺。
 - 已完成云端操作：核心集合与历史集合创建；历史数据应通过控制台 JSON 导入，详见 [docs/historical-migration.md](docs/historical-migration.md)。
-- 已完成云端操作：`get_current_user`、`suggest_historical_aliases`、`claim_historical_identity`、`save_profile_avatar` 已部署到 `cloud1-d3gu11p800a6f5c2a`。
-- 下一开发阶段：初始化东成西就跑团及历史结转余额，然后实现月度承诺、公积金结算和真实看板。
+- 已完成云端操作：`get_current_user`、`suggest_historical_aliases`、`claim_historical_identity`、`save_profile_avatar`、`get_historical_dashboard` 已部署到 `cloud1-d3gu11p800a6f5c2a`。
+- 下一开发阶段：初始化东成西就跑团及历史结转余额，然后将自动继承的承诺写入正式月度目标，最后实现截图审核与公积金结算。
 
 > 不要部署 `update_profile`。它是旧的自由昵称演示函数，不符合封闭成员准入规则。
 

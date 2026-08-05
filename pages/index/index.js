@@ -1,4 +1,4 @@
-const data = require('../../services/data')
+const { getHistoricalDashboard } = require('../../services/cloud')
 
 Page({
   data: { dashboard: null, pct: 0, authorized: false, redirecting: false },
@@ -16,10 +16,14 @@ Page({
       this.refresh()
     })
   },
-  refresh() {
-    const dashboard = data.getDashboard()
-    this.setData({ dashboard, pct: dashboard.totalTarget ? Math.min(100, Math.round(dashboard.totalActual / dashboard.totalTarget * 100)) : 0 })
+  async refresh() {
+    try {
+      const dashboard = await getHistoricalDashboard()
+      this.setData({ dashboard, pct: dashboard.completionPct })
+    } catch (error) {
+      console.error('读取历史看板失败', error)
+      wx.showToast({ title: '历史数据读取失败', icon: 'none' })
+    }
   },
-  goRegister() { wx.navigateTo({ url: '/pages/register/register' }) },
   goUpload() { wx.switchTab({ url: '/pages/upload/upload' }) }
 })
