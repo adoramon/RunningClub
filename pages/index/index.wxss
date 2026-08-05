@@ -20,10 +20,11 @@
 .progress-people { color:rgba(255,255,255,.8); font-size:19rpx; white-space:nowrap; }
 .summary-totals { display:flex; align-items:flex-end; margin-top:12rpx; }
 .summary-metric { min-width:0; flex:1; }
+.summary-vs { flex:0 0 46rpx; align-self:center; color:rgba(255,255,255,.42); font-family:Georgia,"Times New Roman",serif; font-size:27rpx; font-style:italic; font-weight:700; letter-spacing:-1rpx; text-align:center; transform:skewX(-8deg); }
 .number { font-size:42rpx; font-weight:900; }
 .unit { margin-left:3rpx; font-size:20rpx; font-weight:700; }
 .summary-metric view { margin-top:1rpx; color:rgba(255,255,255,.66); font-size:18rpx; }
-.summary-target { box-sizing:border-box; padding-left:18rpx; border-left:1rpx solid rgba(255,255,255,.26); text-align:right; }
+.summary-target { box-sizing:border-box; text-align:right; }
 
 .lifetime-inline { margin:20rpx -24rpx 0; padding:18rpx 24rpx 22rpx; border-radius:22rpx 22rpx 0 0; background:#F6F9F6; color:#6E8173; }
 .lifetime-inline-heading { display:flex; align-items:baseline; flex-wrap:wrap; }
