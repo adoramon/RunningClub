@@ -11,7 +11,7 @@
 .hero-copy { font-size:24rpx; color:rgba(255,255,255,.85); }
 
 .progress-card { padding:20rpx 24rpx 0; overflow:hidden; background:#1F6F54; color:#fff; }
-.summary-ring { display:flex; flex:0 0 116rpx; align-items:center; justify-content:center; width:116rpx; height:116rpx; border-radius:50%; box-shadow:0 0 0 5rpx rgba(246,201,76,.18); }
+.summary-ring { display:flex; flex:0 0 116rpx; align-items:center; justify-content:center; width:116rpx; height:116rpx; border-radius:50%; box-shadow:0 0 0 5rpx rgba(141,224,168,.22); }
 .summary-ring-core { display:flex; align-items:center; justify-content:center; width:84rpx; height:84rpx; border-radius:50%; background:#F7FBF6; color:#176043; font-size:22rpx; font-weight:900; }
 .summary-details { min-width:0; margin-left:20rpx; flex:1; }
 .label { font-size:27rpx; font-weight:800; }
@@ -33,9 +33,9 @@
 .lifetime-inline-loading { margin:18rpx -24rpx 0; padding:20rpx 24rpx; border-radius:22rpx 22rpx 0 0; background:#F1F6F1; color:#688074; font-size:21rpx; }
 .comparison-grid { display:flex; flex-wrap:wrap; margin:12rpx -5rpx -5rpx; }
 .comparison { box-sizing:border-box; width:50%; padding:5rpx; }
-.comparison-inner { padding:11rpx 12rpx; border-radius:12rpx; background:#E3EEE5; }
-.comparison-label { color:#687B6D; font-size:19rpx; }
-.comparison-value { margin-top:3rpx; color:#277451; font-size:24rpx; font-weight:800; }
+.comparison-inner { display:flex; align-items:baseline; justify-content:space-between; padding:12rpx; border-radius:12rpx; background:#E3EEE5; }
+.comparison-label { min-width:0; color:#687B6D; font-size:18rpx; white-space:nowrap; }
+.comparison-value { flex:0 0 auto; margin-left:8rpx; color:#277451; font-size:23rpx; font-weight:800; white-space:nowrap; }
 
 .fund-card { justify-content:space-between; padding:26rpx 30rpx; margin-top:18rpx; }
 .fund-label { color:#788078; font-size:22rpx; }

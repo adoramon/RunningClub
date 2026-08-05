@@ -63,10 +63,10 @@ function buildLifetimeStats(records) {
   const activeMonths = records.filter(record => isNumber(record.targetKm)).map(record => record.month).sort()
   const totalKm = round(counted.reduce((sum, record) => sum + record.calculatedKm, 0))
   const comparisons = [
-    { label: '绕赤道', value: `${formatRatio(totalKm / 40075)} 圈`, note: '赤道约 40,075 km' },
-    { label: '北京—上海往返', value: `${formatRatio(totalKm / 2400)} 趟`, note: '按往返约 2,400 km' },
-    { label: '北京—广州往返', value: `${formatRatio(totalKm / 4200)} 趟`, note: '按往返约 4,200 km' },
-    { label: '北京—拉萨往返', value: `${formatRatio(totalKm / 7500)} 趟`, note: '按往返约 7,500 km' }
+    { label: '相当于绕赤道', value: `${formatRatio(totalKm / 40075)} 圈`, note: '赤道约 40,075 km' },
+    { label: '相当于北京—上海往返', value: `${formatRatio(totalKm / 2400)} 趟`, note: '按往返约 2,400 km' },
+    { label: '相当于北京—广州往返', value: `${formatRatio(totalKm / 4200)} 趟`, note: '按往返约 4,200 km' },
+    { label: '相当于北京—拉萨往返', value: `${formatRatio(totalKm / 7500)} 趟`, note: '按往返约 7,500 km' }
   ]
   const startMonth = activeMonths[0]
   const [startYear, startMonthNumber] = startMonth.split('-').map(Number)
@@ -192,7 +192,7 @@ exports.main = async (event = {}) => {
     totalActualText: formatKm(totalActual),
     completionPct,
     summaryToneClass: summaryTone.toneClass,
-    summaryRingStyle: `background:conic-gradient(#F6C94C ${Math.min(100, completionPct)}%,rgba(255,255,255,.18) 0);`,
+    summaryRingStyle: `background:conic-gradient(#8DE0A8 ${Math.min(100, completionPct)}%,rgba(255,255,255,.18) 0);`,
     fundBalance,
     fundBalanceText: formatMoney(fundBalance),
     fundAddedLastMonth,
