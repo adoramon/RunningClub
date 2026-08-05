@@ -14,7 +14,7 @@
     <view class="row"><text class="label">上月团队完成情况</text><text class="value">{{pct}}%</text></view>
     <view class="track"><view class="fill" style="width: {{pct}}%"></view></view>
     <view class="row totals"><view><text class="number">{{dashboard.totalActualText}}</text><text class="unit"> km 实际跑量</text></view><text class="muted">承诺 {{dashboard.totalTargetText}} km</text></view>
-    <view class="progress-note">{{dashboard.totalMembers}} 人历史记录 · {{dashboard.targetMemberCount}} 人有承诺 · {{dashboard.actualMemberCount}} 人有可统计跑量</view>
+    <view class="progress-note">{{dashboard.totalMembers}} 人历史记录 · {{dashboard.targetMemberCount}} 人有承诺 · {{dashboard.actualMemberCount}} 人有可统计跑量（含公积金倒算）</view>
   </view>
 
   <view class="card notice">

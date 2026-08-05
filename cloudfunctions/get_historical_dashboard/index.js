@@ -13,8 +13,29 @@ function monthOffset(offset) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
+function deriveRecords(records) {
+  let failureStreak = 0
+  return [...records].sort((a, b) => a.month.localeCompare(b.month)).map(record => {
+    if (!isNumber(record.targetKm)) {
+      failureStreak = 0
+      return { ...record, calculatedKm: null, actualSource: 'historical_inactive', failureStreak: 0 }
+    }
+    if (isNumber(record.equivalentKm)) {
+      if (record.equivalentKm >= record.targetKm) failureStreak = 0
+      else failureStreak += 1
+      return { ...record, calculatedKm: round(record.equivalentKm), actualSource: 'recorded', failureStreak }
+    }
+    if (isNumber(record.fundAmount)) {
+      failureStreak += 1
+      const calculatedKm = round(Math.max(0, record.targetKm - record.fundAmount / (3 * failureStreak)))
+      return { ...record, calculatedKm, actualSource: 'inferred_from_fund', failureStreak }
+    }
+    return { ...record, calculatedKm: null, actualSource: 'pending', failureStreak }
+  })
+}
+
 function actualDescription(record) {
-  if (isNumber(record.equivalentKm)) return { actualText: formatKm(record.equivalentKm), actualNote: '实际跑量' }
+  if (isNumber(record.calculatedKm)) return { actualText: formatKm(record.calculatedKm), actualNote: record.actualSource === 'inferred_from_fund' ? '按公积金倒算' : '实际跑量' }
   if (isNumber(record.fundAmount)) return { actualText: '—', actualNote: `公积金 ${record.fundAmount} 元` }
   if (!isNumber(record.targetKm)) return { actualText: '—', actualNote: '当月未参与统计' }
   return { actualText: '—', actualNote: '未记录实际跑量' }
@@ -37,7 +58,17 @@ exports.main = async () => {
   const summaryMonth = monthOffset(-1)
   const currentMonth = monthOffset(0)
   const membersByKey = new Map(allMembersResult.data.map(member => [member.legacyMemberKey || member._id, member]))
-  const summaryRows = summaryRecordsResult.data.map(record => {
+  const memberIdsNeedingDerivation = new Set(summaryRecordsResult.data.filter(record => isNumber(record.fundAmount)).map(record => record.legacyMemberKey))
+  memberIdsNeedingDerivation.add(user.historicalMemberId)
+  const histories = new Map([[user.historicalMemberId, ownRecordsResult.data]])
+  await Promise.all([...memberIdsNeedingDerivation].filter(memberId => memberId !== user.historicalMemberId).map(async memberId => {
+    const result = await db.collection('historical_monthly_records').where({ legacyMemberKey: memberId }).orderBy('month', 'desc').limit(100).get()
+    histories.set(memberId, result.data)
+  }))
+  const derivedByRecordKey = new Map()
+  histories.forEach(history => deriveRecords(history).forEach(record => derivedByRecordKey.set(record.legacyRecordKey, record)))
+  const summaryRows = summaryRecordsResult.data.map(rawRecord => {
+    const record = derivedByRecordKey.get(rawRecord.legacyRecordKey) || { ...rawRecord, calculatedKm: rawRecord.equivalentKm, actualSource: 'recorded' }
     const member = membersByKey.get(record.legacyMemberKey)
     const actual = actualDescription(record)
     return {
@@ -45,7 +76,8 @@ exports.main = async () => {
       alias: member ? member.alias : '未知成员',
       targetKm: isNumber(record.targetKm) ? round(record.targetKm) : null,
       targetText: formatKm(record.targetKm),
-      actualKm: isNumber(record.equivalentKm) ? round(record.equivalentKm) : null,
+      actualKm: isNumber(record.calculatedKm) ? round(record.calculatedKm) : null,
+      actualSource: record.actualSource,
       ...actual,
       isMe: record.legacyMemberKey === user.historicalMemberId
     }
@@ -57,15 +89,15 @@ exports.main = async () => {
 
   const totalTarget = round(summaryRows.reduce((sum, row) => sum + (row.targetKm || 0), 0))
   const totalActual = round(summaryRows.reduce((sum, row) => sum + (row.actualKm || 0), 0))
-  const ownHistory = ownRecordsResult.data
+  const ownHistory = deriveRecords(ownRecordsResult.data)
   const inherited = ownHistory.find(record => record.month === currentMonth && isNumber(record.targetKm)) || ownHistory.find(record => isNumber(record.targetKm)) || null
-  const actualHistory = ownHistory.filter(record => isNumber(record.equivalentKm))
+  const actualHistory = ownHistory.filter(record => isNumber(record.calculatedKm))
   const profile = {
     alias: memberResult.data.alias,
     inheritedTargetKm: inherited ? round(inherited.targetKm) : null,
     inheritedFromMonth: inherited ? inherited.month : null,
-    averageActualKm: actualHistory.length ? round(actualHistory.reduce((sum, record) => sum + record.equivalentKm, 0) / actualHistory.length) : null,
-    bestActualKm: actualHistory.length ? round(Math.max(...actualHistory.map(record => record.equivalentKm))) : null,
+    averageActualKm: actualHistory.length ? round(actualHistory.reduce((sum, record) => sum + record.calculatedKm, 0) / actualHistory.length) : null,
+    bestActualKm: actualHistory.length ? round(Math.max(...actualHistory.map(record => record.calculatedKm))) : null,
     history: ownHistory.map(record => ({
       month: record.month,
       targetText: formatKm(record.targetKm),
