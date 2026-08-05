@@ -18,13 +18,13 @@
 .summary-heading { display:flex; align-items:baseline; justify-content:space-between; gap:12rpx; }
 .label { font-size:30rpx; font-weight:900; white-space:nowrap; }
 .progress-people { color:rgba(255,255,255,.8); font-size:19rpx; white-space:nowrap; }
-.summary-totals { position:relative; display:flex; align-items:flex-end; margin-top:12rpx; }
-.summary-metric { min-width:0; flex:1; }
-.summary-vs { position:absolute; z-index:1; top:50%; left:50%; color:rgba(255,255,255,.23); font-family:"Bradley Hand","Apple Chancery",cursive; font-size:46rpx; font-style:italic; font-weight:400; letter-spacing:1rpx; line-height:1; text-align:center; transform:translate(-50%,-50%) rotate(-10deg); }
+.summary-totals { display:flex; align-items:flex-end; margin-top:12rpx; }
+.summary-metric { min-width:0; flex:1; text-align:center; }
+.summary-divider { align-self:stretch; width:1rpx; margin:0 16rpx 2rpx; background:rgba(255,255,255,.32); }
 .number { font-size:42rpx; font-weight:900; }
 .unit { margin-left:3rpx; font-size:20rpx; font-weight:700; }
 .summary-metric view { margin-top:1rpx; color:rgba(255,255,255,.66); font-size:18rpx; }
-.summary-target { box-sizing:border-box; text-align:right; }
+.summary-target { box-sizing:border-box; text-align:center; }
 
 .lifetime-inline { margin:20rpx -24rpx 0; padding:18rpx 24rpx 22rpx; border-radius:22rpx 22rpx 0 0; background:#F6F9F6; color:#6E8173; }
 .lifetime-inline-heading { display:flex; align-items:baseline; flex-wrap:wrap; }
