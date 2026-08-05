@@ -34,5 +34,10 @@ Page({
       console.error('读取累计跑量失败', error)
     }
   },
+  goMemberAnalysis(event) {
+    const { memberId } = event.currentTarget.dataset
+    if (!memberId) return
+    wx.navigateTo({ url: `/pages/member-analysis/member-analysis?memberId=${encodeURIComponent(memberId)}` })
+  },
   goUpload() { wx.switchTab({ url: '/pages/upload/upload' }) }
 })

@@ -3,7 +3,8 @@
     "pages/index/index",
     "pages/register/register",
     "pages/upload/upload",
-    "pages/analysis/analysis"
+    "pages/analysis/analysis",
+    "pages/member-analysis/member-analysis"
   ],
   "window": {
     "navigationBarTitleText": "东成西就",

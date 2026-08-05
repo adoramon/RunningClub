@@ -22,4 +22,8 @@ function getLifetimeStats() {
   return wx.cloud.callFunction({ name: 'get_historical_dashboard', data: { mode: 'lifetime' } }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats }
+function getMemberHistoricalProfile(memberId) {
+  return wx.cloud.callFunction({ name: 'get_historical_dashboard', data: { mode: 'profile', memberId } }).then(result => result.result)
+}
+
+module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile }

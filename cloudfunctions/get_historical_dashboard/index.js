@@ -89,6 +89,39 @@ async function getLifetimeStats() {
   return value
 }
 
+async function getMemberProfile(memberId) {
+  if (!memberId || typeof memberId !== 'string') throw new Error('成员标识无效')
+  const [memberResult, recordsResult, linkedUserResult] = await Promise.all([
+    db.collection('historical_members').doc(memberId).get(),
+    db.collection('historical_monthly_records').where({ legacyMemberKey: memberId }).orderBy('month', 'desc').limit(100).get(),
+    db.collection('users').where({ historicalMemberId: memberId }).field({ nickname: true, wechatNickname: true, avatarFileId: true }).limit(1).get()
+  ])
+  const member = memberResult.data
+  if (!member) throw new Error('未找到该成员的历史记录')
+  const linkedUser = linkedUserResult.data[0]
+  const history = deriveRecords(recordsResult.data)
+  const currentMonth = monthOffset(0)
+  const inherited = history.find(record => record.month === currentMonth && isNumber(record.targetKm)) || history.find(record => isNumber(record.targetKm)) || null
+  const actualHistory = history.filter(record => isNumber(record.calculatedKm))
+  return {
+    memberId,
+    alias: member.alias,
+    displayName: linkedUser ? (linkedUser.wechatNickname || linkedUser.nickname || member.alias) : member.alias,
+    avatarFileId: linkedUser ? (linkedUser.avatarFileId || '') : '',
+    registered: Boolean(linkedUser),
+    inheritedTargetKm: inherited ? round(inherited.targetKm) : null,
+    inheritedFromMonth: inherited ? inherited.month : null,
+    averageActualKm: actualHistory.length ? round(actualHistory.reduce((sum, record) => sum + record.calculatedKm, 0) / actualHistory.length) : null,
+    bestActualKm: actualHistory.length ? round(Math.max(...actualHistory.map(record => record.calculatedKm))) : null,
+    history: history.map(record => ({
+      month: record.month,
+      targetText: formatKm(record.targetKm),
+      participationStatus: isNumber(record.targetKm) ? 'active' : 'historical_inactive',
+      ...actualDescription(record)
+    }))
+  }
+}
+
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext()
   const users = db.collection('users')
@@ -96,6 +129,7 @@ exports.main = async (event = {}) => {
   const user = userResult.data[0]
   if (!user || !user.historicalMemberId) throw new Error('请先完成历史艺名认领')
   if (event.mode === 'lifetime') return getLifetimeStats()
+  if (event.mode === 'profile') return getMemberProfile(event.memberId || user.historicalMemberId)
 
   const [memberResult, summaryRecordsResult, allMembersResult, ownRecordsResult, linkedUsersResult, ledgerResult] = await Promise.all([
     db.collection('historical_members').doc(user.historicalMemberId).get(),

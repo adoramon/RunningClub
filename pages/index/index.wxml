@@ -27,7 +27,7 @@
 
   <view class="section-title">上月跑量排名</view>
   <view class="card leaderboard">
-    <view class="member" wx:for="{{dashboard.ranking}}" wx:key="memberId">
+    <view class="member" wx:for="{{dashboard.ranking}}" wx:key="memberId" bindtap="goMemberAnalysis" data-member-id="{{item.memberId}}">
       <text class="rank">{{index + 1}}</text><view class="avatar"><image wx:if="{{item.avatarFileId}}" src="{{item.avatarFileId}}" mode="aspectFill"/><text wx:else>{{item.displayName.slice(0,1)}}</text></view>
       <view class="member-info"><view>{{item.displayName}} <text wx:if="{{item.isMe}}" class="mine">我</text><text wx:if="{{!item.registered}}" class="unregistered">○ 未注册</text></view><view class="member-meta {{item.actualNoteClass}}">承诺 {{item.targetText}} km · {{item.actualNote}}</view></view>
       <view class="member-progress"><view class="member-km">{{item.actualText}}<text wx:if="{{item.actualText !== '—'}}"> km</text></view><view class="ring {{item.toneClass}}" style="{{item.ringStyle}}"><view class="ring-core">{{item.completionPct}}%</view></view></view>
