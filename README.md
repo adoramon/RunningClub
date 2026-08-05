@@ -8,6 +8,8 @@
 
 跑团规则与 CloudBase 数据模型见 [docs/domain-model.md](docs/domain-model.md)。其中已固化公积金的递增计算、运动换算规则，以及截至 2026 年 7 月 `-257.00` 元的历史结转余额。
 
+项目的持续背景、云端现状、已知限制与下一步请先阅读 [docs/project-context.md](docs/project-context.md)。
+
 ## 品牌资源
 
 - 团徽：[`assets/images/dongcheng-xijiu-logo.png`](assets/images/dongcheng-xijiu-logo.png)，用于认领页和看板品牌标识。
