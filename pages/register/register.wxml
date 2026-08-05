@@ -3,7 +3,8 @@
   <view class="intro muted">昵称与头像为必填项。系统会据此提供历史艺名匹配建议。</view>
   <view class="card form-card">
     <view class="field-label">微信昵称</view>
-    <button class="nickname-picker" bindtap="authorizeNickname">{{wechatNickname || '授权读取微信昵称'}}</button>
+    <input class="input nickname-input" type="nickname" placeholder="点击后使用微信昵称填写" value="{{wechatNickname}}" data-field="wechatNickname" bindinput="input" bindnicknamereview="nicknameReview" maxlength="20" />
+    <view class="nickname-hint">请点击输入框并按微信提示完成昵称填写；昵称与头像均为必填。</view>
     <view class="field-label target-label">微信头像</view><button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar"><image wx:if="{{avatarPath}}" src="{{avatarPath}}" mode="aspectFill"/><text wx:else>选择头像</text></button>
     <button class="match-btn" bindtap="findSuggestions">获取艺名匹配建议</button>
     <view wx:if="{{suggestions.length}}" class="suggestions"><view class="field-label">建议匹配</view><view wx:for="{{suggestions}}" wx:key="alias" class="suggestion {{alias === item.alias ? 'selected' : ''}}" data-alias="{{item.alias}}" bindtap="selectAlias">{{item.alias}}</view></view>
