@@ -109,7 +109,7 @@ function buildRecentTrend(joinedHistory) {
     return {
       month,
       label: `${month.slice(2, 4)}/${month.slice(5, 7)}`,
-      actualKm: record && isNumber(record.calculatedKm) ? round(record.calculatedKm) : null
+      actualKm: record && isNumber(record.calculatedKm) ? round(record.calculatedKm) : 0
     }
   })
 }
@@ -144,6 +144,7 @@ function buildMemberProfile(member, linkedUser, rawRecords) {
     bestActualKm: actualHistory.length ? round(Math.max(...actualHistory.map(record => record.calculatedKm))) : null,
     totalActualKm: round(actualHistory.reduce((sum, record) => sum + record.calculatedKm, 0)),
     totalFundAmount: round(joinedHistory.reduce((sum, record) => sum + (isNumber(record.fundAmount) ? record.fundAmount : 0), 0)),
+    totalFundAmountText: formatMoney(joinedHistory.reduce((sum, record) => sum + (isNumber(record.fundAmount) ? record.fundAmount : 0), 0)),
     recentTrend: buildRecentTrend(joinedHistory),
     history,
     historyYears: buildHistoryYears(profileChronologicalHistory)

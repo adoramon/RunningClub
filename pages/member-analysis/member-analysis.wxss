@@ -5,12 +5,17 @@
 .title { margin:14rpx 0 34rpx; }
 .stats { display:flex; gap:14rpx; }
 .stats-secondary { margin-top:14rpx; }
-.stat { flex:1; padding:22rpx 12rpx; text-align:center; }
-.stat text { display:block; color:#1F6F54; font-size:37rpx; font-weight:800; }
+.stat { flex:1; padding:22rpx 12rpx; text-align:left; }
+.stat > text { display:block; color:#1F6F54; font-size:37rpx; font-weight:800; }
+.stat-unit { display:inline; margin-left:4rpx; font-size:19rpx; font-weight:800; }
 .stat label { display:block; margin-top:8rpx; color:#788078; font-size:20rpx; }
 .stats-secondary .stat { padding:20rpx 14rpx; text-align:left; }
-.stats-secondary .stat text { font-size:34rpx; }
+.stats-secondary .stat > text { font-size:34rpx; }
 .stats-secondary .stat label { font-size:19rpx; }
+.stat-total-km { background:#1F6F54; }
+.stat-total-fund { background:#B65B2B; }
+.stat-total-km > text,.stat-total-fund > text { color:#FFFFFF; }
+.stat-total-km label,.stat-total-fund label { color:rgba(255,255,255,.78); }
 .trend-card { margin-top:24rpx; padding:24rpx 20rpx 12rpx; overflow:hidden; background:linear-gradient(145deg,#FFFFFF 0%,#F0F8F3 100%); }
 .trend-heading { display:flex; align-items:flex-start; justify-content:space-between; }
 .trend-title { color:#245D45; font-size:30rpx; font-weight:900; }
