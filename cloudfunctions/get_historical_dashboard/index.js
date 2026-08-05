@@ -63,6 +63,13 @@ function hasParticipationData(record) {
   return isNumber(record.targetKm) || isNumber(record.equivalentKm) || isNumber(record.fundAmount)
 }
 
+function profileHistoryStatus(record) {
+  if (!isNumber(record.calculatedKm) && !isNumber(record.fundAmount)) return { actualText: '—', statusLabel: '请假缺席', statusClass: 'status-leave' }
+  if (isNumber(record.fundAmount)) return { actualText: formatKm(record.calculatedKm), statusLabel: '缴纳公积金', statusClass: 'status-fund' }
+  if (isNumber(record.calculatedKm) && (!isNumber(record.targetKm) || record.calculatedKm >= record.targetKm)) return { actualText: formatKm(record.calculatedKm), statusLabel: '达成目标', statusClass: 'status-achieved' }
+  return { actualText: formatKm(record.calculatedKm), statusLabel: '缴纳公积金', statusClass: 'status-fund' }
+}
+
 function buildMemberProfile(member, linkedUser, rawRecords) {
   const currentMonth = monthOffset(0)
   const chronologicalHistory = deriveRecords(rawRecords).filter(record => record.month < currentMonth)
@@ -70,17 +77,14 @@ function buildMemberProfile(member, linkedUser, rawRecords) {
   const joinedHistory = firstParticipationIndex >= 0 ? chronologicalHistory.slice(firstParticipationIndex) : []
   const actualHistory = joinedHistory.filter(record => isNumber(record.calculatedKm))
   const latestTarget = [...joinedHistory].reverse().find(record => isNumber(record.targetKm)) || null
-  const lastIndex = joinedHistory.length - 1
-  const history = joinedHistory.map((record, index) => {
-    const isMiddleBlank = index > 0 && index < lastIndex && !isNumber(record.calculatedKm) && !isNumber(record.fundAmount)
-    const description = isMiddleBlank
-      ? { actualText: '—', actualNote: '请假', actualNoteClass: 'status-leave' }
-      : actualDescription(record)
+  const history = joinedHistory.map(record => {
+    const status = profileHistoryStatus(record)
     return {
       month: record.month,
+      monthShort: `${record.month.slice(2, 4)}/${record.month.slice(5, 7)}`,
       targetText: formatKm(record.targetKm),
       participationStatus: isNumber(record.targetKm) ? 'active' : 'historical_inactive',
-      ...description
+      ...status
     }
   }).reverse()
   return {

@@ -8,7 +8,7 @@
     <view class="stats"><view class="stat card"><text>{{profile.latestTargetKm === null ? '—' : profile.latestTargetKm}}</text><label>最近承诺 km</label></view><view class="stat card"><text>{{average}}</text><label>历史月均 km</label></view><view class="stat card"><text>{{best}}</text><label>历史最高 km</label></view></view>
     <view class="section-title">历史跑量数据</view>
     <view class="card empty" wx:if="{{!records.length}}">历史台账中还没有该成员的有效跑量记录。</view>
-    <view class="card history" wx:else><view wx:for="{{records}}" wx:key="month" class="history-row"><view><view class="history-month">{{item.month}}</view><view class="muted {{item.actualNoteClass}}">承诺 {{item.targetText}} km · {{item.actualNote}}</view></view><view class="history-km">{{item.actualText}}<text wx:if="{{item.actualText !== '—'}}"> km</text></view></view></view>
+    <view class="card history" wx:else><view class="history-grid"><view wx:for="{{records}}" wx:key="month" class="history-cell"><view class="history-tile {{item.statusClass}}"><view class="history-month">{{item.monthShort}}</view><view class="history-km">{{item.actualText}}<text wx:if="{{item.actualText !== '—'}}"> km</text></view><view class="history-status {{item.statusClass}}">{{item.statusLabel}}</view></view></view></view></view>
   </view>
   <view wx:elif="{{loading}}" class="empty-state"><view class="muted">正在读取成员历史数据…</view></view>
   <view wx:else class="empty-state"><view class="title">暂时无法读取<br/>该成员的数据</view></view>

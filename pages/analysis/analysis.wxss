@@ -1,1 +1,20 @@
-.page-brand { display:flex; align-items:center; }.page-logo { width:58rpx; height:58rpx; margin-right:14rpx; }.title { margin:14rpx 0 34rpx; }.stats { display:flex; gap:14rpx; }.stat { flex:1; padding:22rpx 12rpx; text-align:center; }.stat text { display:block; color:#1F6F54; font-size:37rpx; font-weight:800; }.stat label { display:block; margin-top:8rpx; font-size:20rpx; color:#788078; }.empty { color:#788078; font-size:26rpx; line-height:1.7; }.history-row { display:flex; align-items:center; justify-content:space-between; padding:20rpx 0; border-bottom:1rpx solid #F0F0EC; }.history-row:last-child { border:0; }.history-month { font-weight:800; }.history-km { font-weight:800; color:#1F6F54; font-size:34rpx; }.history-km text { font-size:22rpx; }.empty-state { padding-top:100rpx; }.empty-state .muted { margin-bottom:42rpx; }.status-leave { color:#6F8A98; font-weight:700; }
+.page-brand { display:flex; align-items:center; }
+.page-logo { width:58rpx; height:58rpx; margin-right:14rpx; }
+.title { margin:14rpx 0 34rpx; }
+.stats { display:flex; gap:14rpx; }
+.stat { flex:1; padding:22rpx 12rpx; text-align:center; }
+.stat text { display:block; color:#1F6F54; font-size:37rpx; font-weight:800; }
+.stat label { display:block; margin-top:8rpx; color:#788078; font-size:20rpx; }
+.empty { color:#788078; font-size:26rpx; line-height:1.7; }
+.history { padding:12rpx; }
+.history-grid { display:flex; flex-wrap:wrap; }
+.history-cell { box-sizing:border-box; width:33.333%; padding:6rpx; }
+.history-tile { min-height:142rpx; padding:16rpx 12rpx; border:1rpx solid #E9EEEA; border-radius:16rpx; background:#FAFCFA; }
+.history-month { color:#6E7E73; font-size:24rpx; font-weight:800; }
+.history-km { margin-top:10rpx; color:#1F6F54; font-size:32rpx; font-weight:900; line-height:1; }
+.history-km text { font-size:18rpx; }
+.history-status { display:inline-block; margin-top:12rpx; padding:4rpx 8rpx; border-radius:8rpx; font-size:18rpx; font-weight:700; }
+.status-achieved { border-color:#CFE8D8; }.history-status.status-achieved { background:#E2F3E7; color:#237044; }
+.status-fund { border-color:#F0DEAB; }.history-status.status-fund { background:#FFF2CF; color:#A87810; }
+.status-leave { border-color:#F1D3B6; }.history-status.status-leave { background:#FFF0E2; color:#C36E2E; }
+.empty-state { padding-top:100rpx; }.empty-state .muted { margin-bottom:42rpx; }
