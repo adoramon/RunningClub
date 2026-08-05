@@ -11,9 +11,7 @@
   </view>
 
   <view class="card progress-card">
-    <view class="row"><text class="label">上月团队完成情况</text><text class="progress-people">{{dashboard.targetMemberCount}} 人有承诺 · {{dashboard.actualMemberCount}} 人已提交</text></view>
-    <view class="track"><view class="fill" style="width: {{pct}}%"></view></view>
-    <view class="row totals"><view><text class="number">{{dashboard.totalActualText}}</text><text class="unit"> km 实际跑量</text></view><text class="muted">承诺 {{dashboard.totalTargetText}} km</text></view>
+    <view class="summary-layout"><view class="summary-ring {{dashboard.summaryToneClass}}" style="{{dashboard.summaryRingStyle}}"><view class="summary-ring-core">{{dashboard.completionPct}}%</view></view><view class="summary-details"><view class="label">上月团队完成情况</view><view class="progress-people">{{dashboard.targetMemberCount}} 人有承诺 · {{dashboard.actualMemberCount}} 人已提交</view><view class="summary-totals"><text class="number">{{dashboard.totalActualText}}</text><text class="unit"> km 实际</text><text class="summary-target">承诺 {{dashboard.totalTargetText}} km</text></view></view></view>
   </view>
 
   <view class="card fund-card">
@@ -21,6 +19,9 @@
     <view class="fund-divider"></view>
     <view><view class="fund-label">上月新增公积金</view><view class="fund-added">+{{dashboard.fundAddedLastMonthText}} <text>元</text></view></view>
   </view>
+
+  <view wx:if="{{dashboard.lifetime}}" class="card lifetime-card"><view class="lifetime-heading"><view><view class="fund-label">东成西就累计跑量</view><view class="lifetime-amount">{{dashboard.lifetime.totalKmText}} <text>km</text></view></view><view class="lifetime-records">{{dashboard.lifetime.countedRecords}} 条有效月记录</view></view><view class="comparison-grid"><view wx:for="{{dashboard.lifetime.comparisons}}" wx:key="label" class="comparison"><view class="comparison-inner"><view class="comparison-label">{{item.label}}</view><view class="comparison-value">{{item.value}}</view><view class="comparison-note">{{item.note}}</view></view></view></view></view>
+  <view wx:else class="card lifetime-loading">正在汇总东成西就的历史总里程…</view>
 
   <view wx:if="{{!dashboard.myLastMonthSubmitted}}" class="submit-guide" bindtap="goUpload"><view><view class="submit-guide-title">上月跑量尚未提交</view><view class="submit-guide-copy">上传上月运动软件记录，补全上月排名。</view></view><view class="submit-guide-action">去提交 →</view></view>
 

@@ -18,4 +18,8 @@ function getHistoricalDashboard() {
   return wx.cloud.callFunction({ name: 'get_historical_dashboard' }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard }
+function getLifetimeStats() {
+  return wx.cloud.callFunction({ name: 'get_historical_dashboard', data: { mode: 'lifetime' } }).then(result => result.result)
+}
+
+module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats }

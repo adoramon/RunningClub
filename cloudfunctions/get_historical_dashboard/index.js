@@ -2,11 +2,14 @@ const cloud = require('wx-server-sdk')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
+let lifetimeCache = { expiresAt: 0, value: null }
 
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 const round = value => Math.round(value * 100) / 100
 const formatKm = value => isNumber(value) ? String(round(value)) : '—'
 const formatMoney = value => Number(value || 0).toFixed(2)
+const formatTotalKm = value => Number(round(value)).toLocaleString('en-US', { maximumFractionDigits: 2 })
+const formatRatio = value => value >= 10 ? value.toFixed(1) : value.toFixed(2)
 
 function completionTone(percent) {
   if (percent > 120) return { toneClass: 'tone-deep-green', ringColor: '#166C43' }
@@ -55,12 +58,39 @@ function actualDescription(record) {
   return { actualText: '—', actualNote: '请尽快提交跑量数据', actualNoteClass: 'status-action' }
 }
 
-exports.main = async () => {
+function buildLifetimeStats(records) {
+  const counted = records.filter(record => isNumber(record.targetKm) && isNumber(record.calculatedKm))
+  const totalKm = round(counted.reduce((sum, record) => sum + record.calculatedKm, 0))
+  const comparisons = [
+    { label: '绕赤道', value: `${formatRatio(totalKm / 40075)} 圈`, note: '赤道约 40,075 km' },
+    { label: '北京—上海往返', value: `${formatRatio(totalKm / 2400)} 趟`, note: '按往返约 2,400 km' },
+    { label: '北京—广州往返', value: `${formatRatio(totalKm / 4200)} 趟`, note: '按往返约 4,200 km' },
+    { label: '北京—拉萨往返', value: `${formatRatio(totalKm / 7500)} 趟`, note: '按往返约 7,500 km' },
+    { label: '地月往返', value: `${formatRatio(totalKm / 768800)} 次`, note: '按往返约 768,800 km' }
+  ]
+  return { totalKm, totalKmText: formatTotalKm(totalKm), countedRecords: counted.length, comparisons }
+}
+
+async function getLifetimeStats() {
+  if (lifetimeCache.value && Date.now() < lifetimeCache.expiresAt) return lifetimeCache.value
+  const membersResult = await db.collection('historical_members').limit(100).get()
+  const histories = await Promise.all(membersResult.data.map(async member => {
+    const memberId = member.legacyMemberKey || member._id
+    const result = await db.collection('historical_monthly_records').where({ legacyMemberKey: memberId }).orderBy('month', 'desc').limit(100).get()
+    return result.data
+  }))
+  const value = buildLifetimeStats(histories.flatMap(deriveRecords))
+  lifetimeCache = { value, expiresAt: Date.now() + 30 * 60 * 1000 }
+  return value
+}
+
+exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext()
   const users = db.collection('users')
   const userResult = await users.where({ openid: OPENID }).limit(1).get()
   const user = userResult.data[0]
   if (!user || !user.historicalMemberId) throw new Error('请先完成历史艺名认领')
+  if (event.mode === 'lifetime') return getLifetimeStats()
 
   const [memberResult, summaryRecordsResult, allMembersResult, ownRecordsResult, linkedUsersResult, ledgerResult] = await Promise.all([
     db.collection('historical_members').doc(user.historicalMemberId).get(),
@@ -83,7 +113,9 @@ exports.main = async () => {
     histories.set(memberId, result.data)
   }))
   const derivedByRecordKey = new Map()
-  histories.forEach(history => deriveRecords(history).forEach(record => derivedByRecordKey.set(record.legacyRecordKey, record)))
+  histories.forEach(history => deriveRecords(history).forEach(record => {
+    derivedByRecordKey.set(record.legacyRecordKey, record)
+  }))
   const memberRow = rawRecord => {
     const record = derivedByRecordKey.get(rawRecord.legacyRecordKey) || { ...rawRecord, calculatedKm: rawRecord.equivalentKm, actualSource: 'recorded' }
     const member = membersByKey.get(record.legacyMemberKey)
@@ -141,6 +173,8 @@ exports.main = async () => {
     }))
   }
 
+  const completionPct = totalTarget ? Math.round(totalActual / totalTarget * 100) : 0
+  const summaryTone = completionTone(completionPct)
   return {
     summaryMonth,
     currentMonth,
@@ -151,7 +185,9 @@ exports.main = async () => {
     totalTargetText: formatKm(totalTarget),
     totalActual,
     totalActualText: formatKm(totalActual),
-    completionPct: totalTarget ? Math.round(totalActual / totalTarget * 100) : 0,
+    completionPct,
+    summaryToneClass: summaryTone.toneClass,
+    summaryRingStyle: `background:conic-gradient(${summaryTone.ringColor} ${Math.min(100, completionPct)}%,rgba(255,255,255,.22) 0);`,
     fundBalance,
     fundBalanceText: formatMoney(fundBalance),
     fundAddedLastMonth,
