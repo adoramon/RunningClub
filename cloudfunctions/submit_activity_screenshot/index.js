@@ -94,14 +94,17 @@ function parseModelContent(content) {
   }
 }
 
-function requestJson(url, headers, body) {
+function requestJson(options, headers, body) {
   return new Promise((resolve, reject) => {
-    const request = https.request(url, { method: 'POST', headers }, response => {
+    const request = https.request({ ...options, method: 'POST', headers }, response => {
       const chunks = []
       response.on('data', chunk => chunks.push(chunk))
       response.on('end', () => {
         const text = Buffer.concat(chunks).toString('utf8')
-        if (response.statusCode < 200 || response.statusCode >= 300) return reject(new Error(`模型服务返回 ${response.statusCode}`))
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          const detail = text.replace(/\s+/g, ' ').trim().slice(0, 360)
+          return reject(new Error(`模型服务返回 ${response.statusCode}${detail ? `：${detail}` : ''}`))
+        }
         try { resolve(JSON.parse(text)) } catch (_) { reject(new Error('模型服务返回了无效响应')) }
       })
     })
