@@ -1,11 +1,25 @@
 <view class="page">
-  <view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">{{month}} · PROOF OF RUN</view></view><view class="title">提交你的<br/>本月跑量</view>
-  <view class="tip"><text>●</text> 请在每月 1 日提交上月运动软件的统计截图</view>
-  <view class="card form-card">
-    <view class="field-label">运动记录截图</view>
+  <view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">{{month}} · PROOF OF RUN</view></view>
+  <view class="title">提交上月<br/>运动记录</view>
+  <view class="tip"><text>●</text> 上传运动软件月度截图，系统将识别并换算等效跑量。</view>
+
+  <view class="card form-card" wx:if="{{!submission || submission.reviewStatus === 'recognition_failed'}}">
+    <view class="field-label">上月运动记录截图</view>
     <view class="image-picker" bindtap="chooseImage"><image wx:if="{{image}}" src="{{image}}" mode="aspectFill"/><view wx:else><view class="plus">＋</view><view>从相册或相机选择</view></view></view>
-    <view class="field-label distance-label">截图中显示的跑量</view><view class="distance-input"><input type="digit" placeholder="0.00" value="{{distance}}" bindinput="input"/><text>km</text></view>
+    <view class="recognition-note">支持跑步、骑行、游泳、跳绳、累计爬升。请上传包含月份和总量的清晰截图。</view>
+    <button class="primary-btn submit" loading="{{loading}}" bindtap="recognize">智能识别运动量</button>
   </view>
-  <button class="primary-btn submit" bindtap="submit">提交记录</button>
-  <view wx:if="{{submitted}}" class="done">本月已提交 {{submitted.distance}} km，可重新提交以更新记录。</view>
+
+  <view wx:if="{{submission && submission.recognitionStatus === 'recognized'}}" class="card result-card">
+    <view class="result-heading"><view><view class="field-label">识别结果</view><view class="result-meta">{{submission.recognition.sourceApp || '运动记录截图'}} · 置信度 {{confidenceText}}%</view></view><view class="result-tag">待确认</view></view>
+    <view wx:for="{{activities}}" wx:key="index" class="activity-row"><view><view class="activity-name">{{item.activityLabel}}</view><view class="activity-raw">截图识别：{{item.rawValue}} {{item.rawUnit}}</view></view><view class="activity-equivalent">{{item.equivalentText}}<text wx:if="{{item.equivalentText !== '待审核'}}"> km</text></view></view>
+    <view wx:if="{{submission.recognition.notes.length}}" class="review-note">{{submission.recognition.notes[0]}}</view>
+    <view class="field-label total-label">确认计入的等效跑量</view>
+    <view class="distance-input"><input type="digit" placeholder="0.00" value="{{equivalentKm}}" bindinput="inputEquivalentKm"/><text>km</text></view>
+    <view class="confirmation-tip">确认后将进入管理员审核；公积金不会在此步骤自动扣缴。</view>
+    <button class="primary-btn submit" loading="{{loading}}" bindtap="confirm">确认并提交审核</button>
+  </view>
+
+  <view wx:if="{{submission && submission.reviewStatus === 'pending_admin_review'}}" class="card status-card"><view class="status-icon">✓</view><view><view class="status-title">已提交管理员审核</view><view class="status-copy">本次确认计入 {{submission.memberConfirmedEquivalentKm}} km。审核通过后才会进入月度结算。</view></view></view>
+  <view wx:if="{{submission && submission.reviewStatus === 'recognition_failed'}}" class="error-hint">{{submission.recognition.error || '截图暂未识别成功，请更换清晰截图重试。'}}</view>
 </view>

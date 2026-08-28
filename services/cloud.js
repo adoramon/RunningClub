@@ -26,4 +26,16 @@ function getMemberHistoricalProfile(memberId) {
   return wx.cloud.callFunction({ name: 'get_historical_dashboard', data: { mode: 'profile', memberId } }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile }
+function getActivitySubmission() {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'get' } }).then(result => result.result)
+}
+
+function recognizeActivityScreenshot(evidenceFileId) {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'recognize', evidenceFileId } }).then(result => result.result)
+}
+
+function confirmActivitySubmission(confirmedEquivalentKm) {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'confirm', confirmedEquivalentKm } }).then(result => result.result)
+}
+
+module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshot, confirmActivitySubmission }

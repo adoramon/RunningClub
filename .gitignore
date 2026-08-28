@@ -10,6 +10,11 @@ project.private.config.json
 node_modules/
 dist/
 
+# 运行时密钥与本地模型配置
+.env
+.env.*
+!.env.example
+
 # 由本地历史 Excel 生成，仅用于一次性云端导入
 cloudfunctions/import_legacy_history/history-data.json
 migration-data/

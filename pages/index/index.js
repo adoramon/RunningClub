@@ -39,5 +39,5 @@ Page({
     if (!memberId) return
     wx.navigateTo({ url: `/pages/member-analysis/member-analysis?memberId=${encodeURIComponent(memberId)}` })
   },
-  goUpload() { wx.switchTab({ url: '/pages/upload/upload' }) }
+  goUpload() { wx.navigateTo({ url: '/pages/upload/upload' }) }
 })

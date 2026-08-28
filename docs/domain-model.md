@@ -54,9 +54,11 @@
 
 ### activity_records
 
-`clubId`、`userId`、`month`、`activityType`、`rawValue`、`rawUnit`、`equivalentKm`、`evidenceFileIds`、`submittedAt`、`reviewStatus`
+`_id`、`clubId`、`userId`、`historicalMemberId`、`month`、`activityType`、`rawValue`、`rawUnit`、`equivalentKm`、`evidenceFileIds`、`evidenceFileId`、`recognitionStatus`、`recognition`、`memberConfirmedEquivalentKm`、`revision`、`submittedAt`、`reviewStatus`
 
 `activityType` 为 `running`、`cycling`、`swimming`、`jump_rope`、`elevation` 或 `custom`。`custom` 必须由管理员审核并记录换算系数。
+
+截图提交首版以“成员 + 月份”保存一个当前提交文档，并将模型识别到的多项运动保存到 `recognition.activities`；该字段保存原始值、单位、截图佐证文字和云端计算的等效公里数。状态按 `analyzing`、`recognized`、`failed`、`pending_member_confirmation`、`pending_admin_review` 流转。模型原始响应仅供审计，成员确认和管理员审核前不得用于结算。
 
 ### monthly_settlements
 

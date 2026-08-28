@@ -11,6 +11,12 @@
 
 后续云函数会继续以同样的方式部署。
 
+## 截图识别函数
+
+`submit_activity_screenshot` 是真实截图提交的云函数：成员上传上一个完整月的截图后，它调用视觉模型识别运动量，并在服务端完成等效跑量换算。部署该函数前，先在 CloudBase 云函数配置中设置 `RUNNING_CLUB_AI_API_KEY` 环境变量；密钥不能写入源码或小程序端。模型协议、换算规则和完整环境变量说明见 [../docs/ai/screenshot-recognition.md](../docs/ai/screenshot-recognition.md)。
+
+部署完成后，确认 `activity_records` 集合保持客户端不可读写。函数首次成功调用时会按“用户 + 月份”写入当前提交记录；管理员审核与结算功能将在后续阶段接入。
+
 ## 当前已实现的函数
 
 - `get_current_user`：读取或创建当前微信用户。
