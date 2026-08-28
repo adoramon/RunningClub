@@ -77,7 +77,7 @@ function normalizeActivities(value, imageCount) {
     const activityType = canonicalType(item && item.activityType)
     const rawValue = Number(item && item.rawValue)
     const rawUnit = normalizedUnit(item && item.rawUnit).slice(0, 20)
-    const equivalentKm = activityEquivalentKm({ activityType, rawValue })
+    const equivalentKm = activityEquivalentKm({ activityType, rawValue, rawUnit })
     return {
       activityType,
       rawValue: Number.isFinite(rawValue) && rawValue >= 0 ? rawValue : null,
