@@ -6,7 +6,7 @@
       <view class="hero-content">
         <view class="brand-row"><image class="brand-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view><view class="brand-name">东成西就</view><view class="brand-subtitle">RUNNING CLUB</view></view></view>
         <view class="eyebrow hero-eyebrow">{{dashboard.summaryMonth}} · 上月团队总结</view>
-        <view class="title hero-title">一起把承诺<br/>跑成日常</view>
+        <view class="title hero-title"><text>一起把承诺</text><text class="hero-title-line">跑成日常</text></view>
         <view class="hero-copy">每月第一天，提交上月跑量记录。</view>
       </view>
     </view>
