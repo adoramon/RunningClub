@@ -1,4 +1,4 @@
-const { getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission } = require('../../services/cloud')
+const { getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition } = require('../../services/cloud')
 
 function previousMonth() {
   const date = new Date()
@@ -86,5 +86,28 @@ Page({
     } finally {
       this.setData({ loading: false })
     }
+  },
+  cancelRecognition() {
+    wx.showModal({
+      title: '取消本次识别？',
+      content: '取消后不会提交管理员审核，你可以重新选择截图。已上传的凭证会保留用于审计。',
+      confirmText: '确认取消',
+      confirmColor: '#B24F35',
+      success: async result => {
+        if (!result.confirm) return
+        this.setData({ loading: true })
+        try {
+          const { submission } = await cancelActivityRecognition()
+          this.applySubmission(submission)
+          this.setData({ images: [] })
+          wx.showToast({ title: '已取消本次识别', icon: 'success' })
+        } catch (error) {
+          console.error('取消截图识别失败', error)
+          wx.showToast({ title: '取消失败，请稍后重试', icon: 'none' })
+        } finally {
+          this.setData({ loading: false })
+        }
+      }
+    })
   }
 })

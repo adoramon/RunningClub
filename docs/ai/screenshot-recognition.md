@@ -13,6 +13,7 @@
 - `get`：读取当前认领成员上一个完整月的提交状态；
 - `recognize`：下载已上传的截图、调用模型、保存原始识别结果及服务端换算结果；
 - `confirm`：成员确认或修正等效跑量，状态变为 `pending_admin_review`。
+- `cancel`：成员取消尚未确认的识别结果，状态变为 `cancelled`，不删除截图文件或审计记录，可重新提交。
 
 同一成员、同一月份只保留一个当前提交文档，文档 ID 为 `activity-用户ID-月份`。当前一批截图保存在 `evidenceFileIds`（最多 3 张），重新上传会增加修订号；上一批的文件 ID 会转入 `previousEvidenceFileIds` 审计保留（最多 12 张）。客户端不直接写数据库。
 

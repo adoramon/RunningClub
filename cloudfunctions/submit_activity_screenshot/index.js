@@ -211,6 +211,17 @@ exports.main = async (event = {}) => {
     return { submission: publicSubmission({ ...current, memberConfirmedEquivalentKm: round(supplied), reviewStatus: 'pending_admin_review' }) }
   }
 
+  if (action === 'cancel') {
+    const current = (await records.doc(recordId).get()).data
+    if (!current || current.recognitionStatus !== 'recognized' || current.reviewStatus !== 'pending_member_confirmation') {
+      throw new Error('当前没有可取消的识别结果')
+    }
+    await records.doc(recordId).update({ data: {
+      recognitionStatus: 'cancelled', reviewStatus: 'cancelled', cancelledAt: db.serverDate(), updatedAt: db.serverDate()
+    } })
+    return { submission: publicSubmission({ ...current, recognitionStatus: 'cancelled', reviewStatus: 'cancelled' }) }
+  }
+
   if (action !== 'recognize') throw new Error('不支持的提交操作')
   const suppliedFileIds = Array.isArray(event.evidenceFileIds) ? event.evidenceFileIds : [event.evidenceFileId]
   const evidenceFileIds = [...new Set(suppliedFileIds.map(item => String(item || '')).filter(Boolean))]

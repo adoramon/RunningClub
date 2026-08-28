@@ -38,4 +38,8 @@ function confirmActivitySubmission(confirmedEquivalentKm) {
   return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'confirm', confirmedEquivalentKm } }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission }
+function cancelActivityRecognition() {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'cancel' } }).then(result => result.result)
+}
+
+module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition }

@@ -29,8 +29,14 @@
 .distance-input input { flex:1; font-size:46rpx; font-weight:800; }
 .distance-input text { color:#1F6F54; font-weight:700; }
 .confirmation-tip { margin-top:16rpx; color:#859087; font-size:20rpx; line-height:1.5; }
+.result-actions { display:flex; gap:16rpx; margin-top:30rpx; }
+.result-actions .submit { margin-top:0; }
+.confirm-btn { flex:1; }
+.cancel-btn { flex:0 0 210rpx; margin:0; border:2rpx solid #D8DED9; border-radius:14rpx; background:#FFF; color:#6E7A72; font-size:24rpx; font-weight:700; }
+.cancel-btn::after { border:none; }
 .status-card { display:flex; align-items:center; gap:18rpx; border:2rpx solid #CDE7D6; background:#F3FBF6; }
 .status-icon { display:flex; align-items:center; justify-content:center; width:56rpx; height:56rpx; border-radius:50%; background:#1F6F54; color:#FFF; font-size:30rpx; font-weight:900; }
 .status-title { color:#245E45; font-size:29rpx; font-weight:900; }
 .status-copy { margin-top:7rpx; color:#66796C; font-size:21rpx; line-height:1.5; }
 .error-hint { margin-top:20rpx; color:#B24F35; font-size:22rpx; line-height:1.5; }
+.cancelled-hint { margin-top:20rpx; color:#8A753C; font-size:22rpx; line-height:1.5; }
