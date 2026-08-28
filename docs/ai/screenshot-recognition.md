@@ -24,9 +24,11 @@
 | --- | --- | --- |
 | `RUNNING_CLUB_AI_API_KEY` | 是 | 模型服务 API Key |
 | `RUNNING_CLUB_AI_API_BASE` | 否 | OpenAI 兼容 API 根地址；未设置时使用项目当前配置的服务地址 |
-| `RUNNING_CLUB_AI_MODEL` | 否 | 模型名称；未设置时使用项目当前配置的模型名 |
+| `RUNNING_CLUB_AI_MODEL` | 否 | 模型名称；未设置时使用 `local-premium` |
 
 接口需兼容 `POST /v1/chat/completions`，并支持 OpenAI 风格的多模态 `image_url`（Data URL）输入与 JSON 输出。模型密钥仅在云函数运行时通过 `process.env` 读取。
+
+当前模型服务的 `/v1/models` 已验证存在 `local-premium`。该名称已作为云函数默认模型；仍需用真实图片请求验证它是否具备视觉输入能力。
 
 ## 模型输出约定
 

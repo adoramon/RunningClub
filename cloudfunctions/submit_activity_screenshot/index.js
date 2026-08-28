@@ -6,7 +6,7 @@ const db = cloud.database()
 
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024
 const AI_API_BASE = process.env.RUNNING_CLUB_AI_API_BASE || 'https://ai.home.adoramon.com:13246/v1'
-const AI_MODEL = process.env.RUNNING_CLUB_AI_MODEL || 'openai/Qwen3.8-27B-bf16'
+const AI_MODEL = process.env.RUNNING_CLUB_AI_MODEL || 'local-premium'
 const round = value => Math.round(value * 100) / 100
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 
