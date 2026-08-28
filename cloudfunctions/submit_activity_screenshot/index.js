@@ -4,7 +4,8 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
-const MAX_SCREENSHOT_COUNT = 6
+// CloudBase 单次调用的硬上限为 60 秒；三张可让视觉模型推理和写库都有余量。
+const MAX_SCREENSHOT_COUNT = 3
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 const MAX_TOTAL_IMAGE_BYTES = 12 * 1024 * 1024
 const AI_API_BASE = process.env.RUNNING_CLUB_AI_API_BASE || 'https://ai.home.adoramon.com:13246/v1'
@@ -111,7 +112,7 @@ function requestJson(options, headers, body) {
         try { resolve(JSON.parse(text)) } catch (_) { reject(new Error('模型服务返回了无效响应')) }
       })
     })
-    request.setTimeout(55000, () => request.destroy(new Error('模型识别超时')))
+    request.setTimeout(48000, () => request.destroy(new Error('模型识别超时')))
     request.on('error', reject)
     request.write(body)
     request.end()

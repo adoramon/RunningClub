@@ -4,10 +4,10 @@
   <view class="tip"><text>●</text> 上传运动软件月度截图，系统将识别并换算等效跑量。</view>
 
   <view class="card form-card" wx:if="{{!submission || submission.reviewStatus === 'recognition_failed'}}">
-    <view class="field-label">上月运动记录截图 <text class="image-count">{{images.length}} / 6 张</text></view>
+    <view class="field-label">上月运动记录截图 <text class="image-count">{{images.length}} / 3 张</text></view>
     <view class="image-picker {{images.length ? 'has-images' : ''}}" bindtap="chooseImages">
       <view wx:if="{{images.length}}" class="image-grid"><image wx:for="{{images}}" wx:key="path" src="{{item.path}}" mode="aspectFill"/></view>
-      <view wx:else><view class="plus">＋</view><view>从相册或相机选择</view><view class="picker-subtitle">可一次选择最多 6 张</view></view>
+      <view wx:else><view class="plus">＋</view><view>从相册或相机选择</view><view class="picker-subtitle">可一次选择最多 3 张</view></view>
     </view>
     <view wx:if="{{images.length}}" class="replace-images" bindtap="chooseImages">重新选择截图</view>
     <view class="recognition-note">可合并多张不同的运动记录；请勿重复上传同一份月度总量截图。支持跑步、骑行、游泳、跳绳、累计爬升。</view>

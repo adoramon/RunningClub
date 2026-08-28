@@ -39,7 +39,7 @@ Page({
   },
   async chooseImages() {
     try {
-      const result = await wx.chooseMedia({ count: 6, mediaType: ['image'], sourceType: ['album', 'camera'] })
+      const result = await wx.chooseMedia({ count: 3, mediaType: ['image'], sourceType: ['album', 'camera'] })
       const images = await Promise.all(result.tempFiles.map(async file => {
         let path = file.tempFilePath
         try { path = (await wx.compressImage({ src: path, quality: 80 })).tempFilePath } catch (_) {}
