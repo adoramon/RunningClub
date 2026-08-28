@@ -46,6 +46,14 @@ function distanceToKm(value, rawUnit) {
   return unit === 'm' ? value / 1000 : value
 }
 
+function isValidActivityUnit(activityType, rawUnit) {
+  const unit = normalizedUnit(rawUnit)
+  if (['running', 'cycling', 'swimming'].includes(activityType)) return unit === 'km' || unit === 'm'
+  if (activityType === 'jump_rope') return unit === 'count'
+  if (activityType === 'elevation') return unit === 'm'
+  return activityType === 'custom'
+}
+
 function activityEquivalentKm(activity) {
   const value = Number(activity.rawValue)
   if (!Number.isFinite(value) || value < 0) return null
@@ -84,9 +92,10 @@ function normalizeActivities(value, imageCount) {
       rawUnit,
       equivalentKm,
       evidenceImageIndex: Math.max(1, Math.min(imageCount || 1, Number.parseInt(item && item.imageIndex, 10) || 1)),
-      evidence: String(item && item.evidence || '').trim().slice(0, 120)
+      evidence: String(item && item.evidence || '').trim().slice(0, 120),
+      unitValid: isValidActivityUnit(activityType, rawUnit)
     }
-  }).filter(item => item.rawValue !== null)
+  }).filter(item => item.rawValue !== null && item.unitValid).map(({ unitValid, ...item }) => item)
 }
 
 function parseModelContent(content, imageCount) {
@@ -143,7 +152,7 @@ async function recognizeImages(fileIds, expectedMonth) {
   const imageParts = fileContents.map(fileContent => ({
     type: 'image_url', image_url: { url: `data:${imageMimeType(fileContent)};base64,${fileContent.toString('base64')}` }
   }))
-  const prompt = `你是运动截图结构化识别器。以下共有 ${fileIds.length} 张截图，全部是同一成员 ${expectedMonth} 的月度运动记录。请逐图识别并把所有不同运动记录相加；只根据截图中清晰可见、明确标注为本月或累计总量的距离/次数提取数据，不猜测、不补全。\n\n【总量优先规则，必须遵守】一张截图只读取该运动的“累计”“本月累计”“月度总计”“总距离”或等义总量卡片。若游泳截图顶部显示“累计游泳距离 48,806 米”，而下方还有分段、单次、泳姿、训练记录或按天明细，则只输出 48,806 米；下方任一分段数字都不得输出、不得相加、不得作为替代值。跑步和骑行截图同样：忽略单次活动、分段、配速、时长、卡路里、排名和目标值。若找不到明确的累计/本月总量标签，不输出该项并在 notes 说明，设 needsReview=true。不要把同一截图内重复展示的同一个总量重复计入；若不同截图疑似展示同一条或同一月总量，不要擅自相加，设 needsReview=true 并写入 notes。\n\n数字必须逐字读取并保留完整精度：带千位分隔符的 48,806 米必须输出 rawValue=48806、rawUnit="m"，不能缩写为 48.806、2600 或其他数值；52.76 公里必须输出 rawValue=52.76、rawUnit="km"。无法明确看清完整数字时，不输出该项并在 notes 说明。\n\n支持类型及云端换算规则：running（跑步，距离）；cycling（骑行，距离后除以3）；swimming（游泳，距离后乘以5）；jump_rope（跳绳，次数后除以100）；elevation（累计爬升，米后乘以0.02）。距离必须使用截图显示的原始单位：“km”或“m”；无法明确归类时用 custom，并设 needsReview=true。\n\n只输出不带 Markdown 的 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${fileIds.length},"activityType":"running|cycling|swimming|jump_rope|elevation|custom","rawValue":数字,"rawUnit":"km|m|count","evidence":"累计/本月总量标签 + 完整数字 + 单位"}],"confidence":0到1,"needsReview":true或false,"notes":["不确定项"]}`
+  const prompt = `你是运动截图结构化识别器。以下共有 ${fileIds.length} 张截图，全部是同一成员 ${expectedMonth} 的月度运动记录。请逐图识别并把所有不同运动记录相加；只根据截图中清晰可见、明确标注为本月或累计总量的距离/次数提取数据，不猜测、不补全。\n\n【总量优先规则，必须遵守】一张截图只读取该运动的“累计”“本月累计”“月度总计”“总距离”或等义总量卡片。若游泳截图顶部显示“累计游泳距离 48,806 米”，而下方还有分段、单次、泳姿、训练记录或按天明细，则只输出 48,806 米；下方任一分段数字都不得输出、不得相加、不得作为替代值。跑步和骑行截图同样：忽略单次活动、分段、配速、时长、卡路里、排名和目标值。卡路里/大卡/kcal、步数、时长、心率、消耗热量永远不是跑量：不得把它们输出为任何 activityType，也不得使用 count 作为跑步、骑行或游泳的单位。若找不到明确的累计/本月总量标签，不输出该项并在 notes 说明，设 needsReview=true。不要把同一截图内重复展示的同一个总量重复计入；若不同截图疑似展示同一条或同一月总量，不要擅自相加，设 needsReview=true 并写入 notes。\n\n数字必须逐字读取并保留完整精度：带千位分隔符的 48,806 米必须输出 rawValue=48806、rawUnit="m"，不能缩写为 48.806、2600 或其他数值；52.76 公里必须输出 rawValue=52.76、rawUnit="km"。无法明确看清完整数字时，不输出该项并在 notes 说明。\n\n支持类型及云端换算规则：running（跑步，距离，仅 km/m）；cycling（骑行，距离，仅 km/m，后除以3）；swimming（游泳，距离，仅 km/m，后乘以5）；jump_rope（跳绳，仅 count，次数后除以100）；elevation（累计爬升，仅 m，乘以0.02）。无法明确归类时用 custom，并设 needsReview=true。\n\n只输出不带 Markdown 的 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${fileIds.length},"activityType":"running|cycling|swimming|jump_rope|elevation|custom","rawValue":数字,"rawUnit":"km|m|count","evidence":"累计/本月总量标签 + 完整数字 + 单位"}],"confidence":0到1,"needsReview":true或false,"notes":["不确定项"]}`
   const requestBody = JSON.stringify({
     model: AI_MODEL,
     temperature: 0,
