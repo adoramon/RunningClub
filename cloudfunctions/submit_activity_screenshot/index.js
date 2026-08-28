@@ -140,8 +140,14 @@ async function recognizeImage(fileId, expectedMonth) {
     'Content-Length': Buffer.byteLength(requestBody)
   }, requestBody)
   const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content
-  const recognized = parseModelContent(content)
-  return { ...recognized, provider: 'openai-compatible', model: AI_MODEL, rawResponse: JSON.stringify(response).slice(0, 8000) }
+  const rawResponse = JSON.stringify(response).slice(0, 8000)
+  try {
+    const recognized = parseModelContent(content)
+    return { ...recognized, provider: 'openai-compatible', model: AI_MODEL, rawResponse }
+  } catch (error) {
+    error.rawResponse = rawResponse
+    throw error
+  }
 }
 
 function publicSubmission(record) {
@@ -214,6 +220,7 @@ exports.main = async (event = {}) => {
     return { submission: publicSubmission(result) }
   } catch (error) {
     const recognition = { error: safeError(error), activities: [], notes: [] }
+    if (error && error.rawResponse) recognition.rawResponse = error.rawResponse
     const result = { ...baseRecord, recognitionStatus: 'failed', recognition, reviewStatus: 'recognition_failed' }
     await records.doc(recordId).update({ data: { recognitionStatus: 'failed', recognition, reviewStatus: 'recognition_failed', updatedAt: db.serverDate() } })
     return { submission: publicSubmission(result) }
