@@ -33,13 +33,26 @@ function imageMimeType(buffer) {
   return 'image/jpeg'
 }
 
+function normalizedUnit(value) {
+  const unit = String(value || '').trim().toLowerCase()
+  if (['m', 'meter', 'meters', '米'].includes(unit)) return 'm'
+  if (['km', 'kilometer', 'kilometers', '公里', '千米'].includes(unit)) return 'km'
+  if (['count', '次', '个'].includes(unit)) return 'count'
+  return unit
+}
+
+function distanceToKm(value, rawUnit) {
+  const unit = normalizedUnit(rawUnit)
+  return unit === 'm' ? value / 1000 : value
+}
+
 function activityEquivalentKm(activity) {
   const value = Number(activity.rawValue)
   if (!Number.isFinite(value) || value < 0) return null
   switch (activity.activityType) {
-    case 'running': return round(value)
-    case 'cycling': return round(value / 3)
-    case 'swimming': return round(value * 5)
+    case 'running': return round(distanceToKm(value, activity.rawUnit))
+    case 'cycling': return round(distanceToKm(value, activity.rawUnit) / 3)
+    case 'swimming': return round(distanceToKm(value, activity.rawUnit) * 5)
     case 'jump_rope': return round(value / 100)
     case 'elevation': return round(value * 0.02)
     default: return null
@@ -63,7 +76,7 @@ function normalizeActivities(value, imageCount) {
   return value.slice(0, 8).map(item => {
     const activityType = canonicalType(item && item.activityType)
     const rawValue = Number(item && item.rawValue)
-    const rawUnit = String(item && item.rawUnit || '').trim().slice(0, 20)
+    const rawUnit = normalizedUnit(item && item.rawUnit).slice(0, 20)
     const equivalentKm = activityEquivalentKm({ activityType, rawValue })
     return {
       activityType,
@@ -130,7 +143,7 @@ async function recognizeImages(fileIds, expectedMonth) {
   const imageParts = fileContents.map(fileContent => ({
     type: 'image_url', image_url: { url: `data:${imageMimeType(fileContent)};base64,${fileContent.toString('base64')}` }
   }))
-  const prompt = `你是运动截图结构化识别器。以下共有 ${fileIds.length} 张截图，全部是同一成员 ${expectedMonth} 的月度运动记录。请逐图识别并把所有不同运动记录相加；只根据清晰可见的内容提取运动总量，不猜测、不补全。不要把同一截图内重复展示的同一个总量重复计入；若不同截图疑似展示同一条或同一月总量，不要擅自相加，设 needsReview=true 并写入 notes。\n\n支持类型及云端换算规则：running（跑步，公里）；cycling（骑行，公里后除以3）；swimming（游泳，公里后乘以5）；jump_rope（跳绳，次数后除以100）；elevation（累计爬升，米后乘以0.02）。无法明确归类时用 custom，并设 needsReview=true。\n\n只输出不带 Markdown 的 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${fileIds.length},"activityType":"running|cycling|swimming|jump_rope|elevation|custom","rawValue":数字,"rawUnit":"km|m|count","evidence":"截图中对应文字"}],"confidence":0到1,"needsReview":true或false,"notes":["不确定项"]}`
+  const prompt = `你是运动截图结构化识别器。以下共有 ${fileIds.length} 张截图，全部是同一成员 ${expectedMonth} 的月度运动记录。请逐图识别并把所有不同运动记录相加；只根据截图中清晰可见、明确标注为本月或累计总量的距离/次数提取数据，不猜测、不补全。不要使用单次活动、配速、时长、卡路里、排名或目标值；不要把同一截图内重复展示的同一个总量重复计入。若不同截图疑似展示同一条或同一月总量，不要擅自相加，设 needsReview=true 并写入 notes。\n\n数字必须逐字读取并保留完整精度：带千位分隔符的 48,806 米必须输出 rawValue=48806、rawUnit="m"，不能缩写为 48.806、2600 或其他数值；52.76 公里必须输出 rawValue=52.76、rawUnit="km"。无法明确看清完整数字时，不输出该项并在 notes 说明。\n\n支持类型及云端换算规则：running（跑步，距离）；cycling（骑行，距离后除以3）；swimming（游泳，距离后乘以5）；jump_rope（跳绳，次数后除以100）；elevation（累计爬升，米后乘以0.02）。距离必须使用截图显示的原始单位：“km”或“m”；无法明确归类时用 custom，并设 needsReview=true。\n\n只输出不带 Markdown 的 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${fileIds.length},"activityType":"running|cycling|swimming|jump_rope|elevation|custom","rawValue":数字,"rawUnit":"km|m|count","evidence":"截图中对应文字（含完整数字和单位）"}],"confidence":0到1,"needsReview":true或false,"notes":["不确定项"]}`
   const requestBody = JSON.stringify({
     model: AI_MODEL,
     temperature: 0,
