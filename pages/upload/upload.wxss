@@ -4,9 +4,14 @@
 .tip { padding:20rpx; border-radius:14rpx; background:#FFF2D7; color:#82611C; font-size:24rpx; margin-bottom:28rpx; }
 .tip text { color:#D5A328; margin-right:8rpx; }
 .field-label { color:#56625A; font-size:26rpx; font-weight:700; }
+.image-count { color:#829087; font-size:21rpx; font-weight:500; }
 .image-picker { height:300rpx; margin-top:20rpx; border:2rpx dashed #C8D3CB; border-radius:16rpx; background:#F7FAF7; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#788078; text-align:center; font-size:25rpx; }
-.image-picker image { width:100%; height:100%; }
+.image-picker.has-images { border-style:solid; }
+.image-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:6rpx; width:100%; height:100%; padding:6rpx; box-sizing:border-box; }
+.image-grid image { width:100%; height:100%; border-radius:8rpx; }
 .plus { color:#1F6F54; font-size:54rpx; line-height:60rpx; }
+.picker-subtitle { margin-top:8rpx; color:#98A29A; font-size:20rpx; }
+.replace-images { margin-top:14rpx; color:#1F6F54; text-align:right; font-size:22rpx; font-weight:700; }
 .recognition-note { margin-top:18rpx; color:#859087; font-size:21rpx; line-height:1.55; }
 .submit { margin-top:30rpx; }
 .result-card { border:2rpx solid #D6E9DC; }

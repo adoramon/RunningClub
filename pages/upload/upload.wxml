@@ -4,15 +4,20 @@
   <view class="tip"><text>●</text> 上传运动软件月度截图，系统将识别并换算等效跑量。</view>
 
   <view class="card form-card" wx:if="{{!submission || submission.reviewStatus === 'recognition_failed'}}">
-    <view class="field-label">上月运动记录截图</view>
-    <view class="image-picker" bindtap="chooseImage"><image wx:if="{{image}}" src="{{image}}" mode="aspectFill"/><view wx:else><view class="plus">＋</view><view>从相册或相机选择</view></view></view>
-    <view class="recognition-note">支持跑步、骑行、游泳、跳绳、累计爬升。请上传包含月份和总量的清晰截图。</view>
-    <button class="primary-btn submit" loading="{{loading}}" bindtap="recognize">智能识别运动量</button>
+    <view class="field-label">上月运动记录截图 <text class="image-count">{{images.length}} / 6 张</text></view>
+    <view class="image-picker {{images.length ? 'has-images' : ''}}" bindtap="chooseImages">
+      <view wx:if="{{images.length}}" class="image-grid"><image wx:for="{{images}}" wx:key="path" src="{{item.path}}" mode="aspectFill"/></view>
+      <view wx:else><view class="plus">＋</view><view>从相册或相机选择</view><view class="picker-subtitle">可一次选择最多 6 张</view></view>
+    </view>
+    <view wx:if="{{images.length}}" class="replace-images" bindtap="chooseImages">重新选择截图</view>
+    <view class="recognition-note">可合并多张不同的运动记录；请勿重复上传同一份月度总量截图。支持跑步、骑行、游泳、跳绳、累计爬升。</view>
+    <button class="primary-btn submit" loading="{{loading}}" bindtap="recognize">智能识别并汇总</button>
   </view>
 
   <view wx:if="{{submission && submission.recognitionStatus === 'recognized'}}" class="card result-card">
-    <view class="result-heading"><view><view class="field-label">识别结果</view><view class="result-meta">{{submission.recognition.sourceApp || '运动记录截图'}} · 置信度 {{confidenceText}}%</view></view><view class="result-tag">待确认</view></view>
-    <view wx:for="{{activities}}" wx:key="index" class="activity-row"><view><view class="activity-name">{{item.activityLabel}}</view><view class="activity-raw">截图识别：{{item.rawValue}} {{item.rawUnit}}</view></view><view class="activity-equivalent">{{item.equivalentText}}<text wx:if="{{item.equivalentText !== '待审核'}}"> km</text></view></view>
+    <view class="result-heading"><view><view class="field-label">识别结果</view><view class="result-meta">已分析 {{submission.evidenceCount || 1}} 张截图 · 置信度 {{confidenceText}}%</view></view><view class="result-tag">待确认</view></view>
+    <view wx:for="{{activities}}" wx:key="index" class="activity-row"><view><view class="activity-name">{{item.activityLabel}}</view><view class="activity-raw">第 {{item.evidenceImageIndex}} 张截图 · {{item.rawValue}} {{item.rawUnit}}</view></view><view class="activity-equivalent">{{item.equivalentText}}<text wx:if="{{item.equivalentText !== '待审核'}}"> km</text></view></view>
+    <view wx:if="{{submission.evidenceCount > 1}}" class="review-note">已合并多张截图，请确认不同截图没有重复展示同一份月度总量。</view>
     <view wx:if="{{submission.recognition.notes.length}}" class="review-note">{{submission.recognition.notes[0]}}</view>
     <view class="field-label total-label">确认计入的等效跑量</view>
     <view class="distance-input"><input type="digit" placeholder="0.00" value="{{equivalentKm}}" bindinput="inputEquivalentKm"/><text>km</text></view>

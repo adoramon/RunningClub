@@ -1,4 +1,4 @@
-const { getActivitySubmission, recognizeActivityScreenshot, confirmActivitySubmission } = require('../../services/cloud')
+const { getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission } = require('../../services/cloud')
 
 function previousMonth() {
   const date = new Date()
@@ -10,7 +10,7 @@ function previousMonth() {
 const activityLabels = { running: '跑步', cycling: '骑行', swimming: '游泳', jump_rope: '跳绳', elevation: '累计爬升', custom: '其他运动（需审核）' }
 
 Page({
-  data: { month: previousMonth(), image: '', submission: null, activities: [], equivalentKm: '', loading: false },
+  data: { month: previousMonth(), images: [], submission: null, activities: [], equivalentKm: '', loading: false },
   onShow() { this.loadSubmission() },
   async loadSubmission() {
     try {
@@ -25,7 +25,8 @@ Page({
     const activities = (recognition.activities || []).map(item => ({
       ...item,
       activityLabel: activityLabels[item.activityType] || activityLabels.custom,
-      equivalentText: typeof item.equivalentKm === 'number' ? item.equivalentKm : '待审核'
+      equivalentText: typeof item.equivalentKm === 'number' ? item.equivalentKm : '待审核',
+      evidenceImageIndex: item.evidenceImageIndex || 1
     }))
     this.setData({
       submission,
@@ -36,25 +37,30 @@ Page({
         : String(submission.memberConfirmedEquivalentKm)
     })
   },
-  async chooseImage() {
+  async chooseImages() {
     try {
-      const result = await wx.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'], sizeType: ['compressed'] })
-      let image = result.tempFiles[0].tempFilePath
-      try { image = await wx.compressImage({ src: image, quality: 80 }).then(value => value.tempFilePath) } catch (_) {}
-      this.setData({ image })
+      const result = await wx.chooseMedia({ count: 6, mediaType: ['image'], sourceType: ['album', 'camera'] })
+      const images = await Promise.all(result.tempFiles.map(async file => {
+        let path = file.tempFilePath
+        try { path = (await wx.compressImage({ src: path, quality: 80 })).tempFilePath } catch (_) {}
+        return { path }
+      }))
+      this.setData({ images })
     } catch (_) {}
   },
   inputEquivalentKm(event) { this.setData({ equivalentKm: event.detail.value }) },
   async recognize() {
-    if (!this.data.image) return wx.showToast({ title: '请先选择运动记录截图', icon: 'none' })
+    if (!this.data.images.length) return wx.showToast({ title: '请先选择运动记录截图', icon: 'none' })
     this.setData({ loading: true })
     wx.showLoading({ title: '正在识别截图…', mask: true })
     try {
-      const extension = (this.data.image.match(/\.([a-zA-Z0-9]+)(?:\?|$)/) || [])[1]
-      const suffix = /^(jpg|jpeg|png|webp)$/i.test(extension || '') ? extension.toLowerCase() : 'jpg'
-      const cloudPath = `activity-proofs/${this.data.month}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${suffix}`
-      const uploaded = await wx.cloud.uploadFile({ cloudPath, filePath: this.data.image })
-      const { submission } = await recognizeActivityScreenshot(uploaded.fileID)
+      const uploaded = await Promise.all(this.data.images.map((image, index) => {
+        const extension = (image.path.match(/\.([a-zA-Z0-9]+)(?:\?|$)/) || [])[1]
+        const suffix = /^(jpg|jpeg|png|webp)$/i.test(extension || '') ? extension.toLowerCase() : 'jpg'
+        const cloudPath = `activity-proofs/${this.data.month}/${Date.now()}-${index + 1}-${Math.random().toString(36).slice(2, 8)}.${suffix}`
+        return wx.cloud.uploadFile({ cloudPath, filePath: image.path })
+      }))
+      const { submission } = await recognizeActivityScreenshots(uploaded.map(item => item.fileID))
       this.applySubmission(submission)
       if (submission.recognitionStatus === 'recognized') wx.showToast({ title: '识别完成，请确认结果', icon: 'success' })
       else wx.showToast({ title: submission.recognition.error || '识别失败，请更换清晰截图', icon: 'none', duration: 3200 })

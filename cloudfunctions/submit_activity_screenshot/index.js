@@ -4,7 +4,9 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
-const MAX_IMAGE_BYTES = 6 * 1024 * 1024
+const MAX_SCREENSHOT_COUNT = 6
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024
+const MAX_TOTAL_IMAGE_BYTES = 12 * 1024 * 1024
 const AI_API_BASE = process.env.RUNNING_CLUB_AI_API_BASE || 'https://ai.home.adoramon.com:13246/v1'
 const AI_MODEL = process.env.RUNNING_CLUB_AI_MODEL || 'local-vsr'
 const round = value => Math.round(value * 100) / 100
@@ -55,7 +57,7 @@ function canonicalType(value) {
   return aliases[type] || 'custom'
 }
 
-function normalizeActivities(value) {
+function normalizeActivities(value, imageCount) {
   if (!Array.isArray(value)) return []
   return value.slice(0, 8).map(item => {
     const activityType = canonicalType(item && item.activityType)
@@ -67,18 +69,19 @@ function normalizeActivities(value) {
       rawValue: Number.isFinite(rawValue) && rawValue >= 0 ? rawValue : null,
       rawUnit,
       equivalentKm,
+      evidenceImageIndex: Math.max(1, Math.min(imageCount || 1, Number.parseInt(item && item.imageIndex, 10) || 1)),
       evidence: String(item && item.evidence || '').trim().slice(0, 120)
     }
   }).filter(item => item.rawValue !== null)
 }
 
-function parseModelContent(content) {
+function parseModelContent(content, imageCount) {
   const text = Array.isArray(content)
     ? content.map(item => item && (item.text || item.content || '')).join('')
     : String(content || '')
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
   const parsed = JSON.parse(cleaned)
-  const activities = normalizeActivities(parsed.activities)
+  const activities = normalizeActivities(parsed.activities, imageCount)
   if (!activities.length) throw new Error('截图中未识别到可换算的运动数据')
   const hasCustomActivity = activities.some(item => item.equivalentKm === null)
   const equivalentKm = hasCustomActivity ? null : round(activities.reduce((sum, item) => sum + item.equivalentKm, 0))
@@ -89,7 +92,7 @@ function parseModelContent(content) {
     confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0,
     activities,
     suggestedEquivalentKm: equivalentKm,
-    needsReview: Boolean(parsed.needsReview) || hasCustomActivity || equivalentKm === null,
+    needsReview: Boolean(parsed.needsReview) || imageCount > 1 || hasCustomActivity || equivalentKm === null,
     notes: Array.isArray(parsed.notes) ? parsed.notes.map(item => String(item).slice(0, 120)).slice(0, 5) : []
   }
 }
@@ -115,21 +118,25 @@ function requestJson(options, headers, body) {
   })
 }
 
-async function recognizeImage(fileId, expectedMonth) {
+async function recognizeImages(fileIds, expectedMonth) {
   const apiKey = process.env.RUNNING_CLUB_AI_API_KEY
   if (!apiKey) throw new Error('模型服务尚未配置，请联系管理员')
-  const downloaded = await cloud.downloadFile({ fileID: fileId })
-  const fileContent = Buffer.from(downloaded.fileContent)
-  if (!fileContent.length || fileContent.length > MAX_IMAGE_BYTES) throw new Error('截图文件需小于 6 MB')
-  const imageUrl = `data:${imageMimeType(fileContent)};base64,${fileContent.toString('base64')}`
-  const prompt = `你是运动截图结构化识别器。请只根据截图中清晰可见的内容提取运动总量，不猜测、不补全。目标统计月份是 ${expectedMonth}。\n\n支持类型及云端换算规则：running（跑步，公里）；cycling（骑行，公里后除以3）；swimming（游泳，公里后乘以5）；jump_rope（跳绳，次数后除以100）；elevation（累计爬升，米后乘以0.02）。无法明确归类时用 custom，并设 needsReview=true。\n\n只输出不带 Markdown 的 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"activityType":"running|cycling|swimming|jump_rope|elevation|custom","rawValue":数字,"rawUnit":"km|m|count","evidence":"截图中对应文字"}],"confidence":0到1,"needsReview":true或false,"notes":["不确定项"]}`
+  const downloads = await Promise.all(fileIds.map(fileID => cloud.downloadFile({ fileID })))
+  const fileContents = downloads.map(downloaded => Buffer.from(downloaded.fileContent))
+  const totalBytes = fileContents.reduce((sum, content) => sum + content.length, 0)
+  if (fileContents.some(content => !content.length || content.length > MAX_IMAGE_BYTES)) throw new Error('单张截图需小于 4 MB')
+  if (totalBytes > MAX_TOTAL_IMAGE_BYTES) throw new Error('本次截图总大小需小于 12 MB')
+  const imageParts = fileContents.map(fileContent => ({
+    type: 'image_url', image_url: { url: `data:${imageMimeType(fileContent)};base64,${fileContent.toString('base64')}` }
+  }))
+  const prompt = `你是运动截图结构化识别器。以下共有 ${fileIds.length} 张截图，全部是同一成员 ${expectedMonth} 的月度运动记录。请逐图识别并把所有不同运动记录相加；只根据清晰可见的内容提取运动总量，不猜测、不补全。不要把同一截图内重复展示的同一个总量重复计入；若不同截图疑似展示同一条或同一月总量，不要擅自相加，设 needsReview=true 并写入 notes。\n\n支持类型及云端换算规则：running（跑步，公里）；cycling（骑行，公里后除以3）；swimming（游泳，公里后乘以5）；jump_rope（跳绳，次数后除以100）；elevation（累计爬升，米后乘以0.02）。无法明确归类时用 custom，并设 needsReview=true。\n\n只输出不带 Markdown 的 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${fileIds.length},"activityType":"running|cycling|swimming|jump_rope|elevation|custom","rawValue":数字,"rawUnit":"km|m|count","evidence":"截图中对应文字"}],"confidence":0到1,"needsReview":true或false,"notes":["不确定项"]}`
   const requestBody = JSON.stringify({
     model: AI_MODEL,
     temperature: 0,
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: '你必须返回严格 JSON，绝不输出解释性文字。' },
-      { role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image_url', image_url: { url: imageUrl } }] }
+      { role: 'user', content: [{ type: 'text', text: prompt }, ...imageParts] }
     ]
   })
   const base = new URL(AI_API_BASE)
@@ -142,7 +149,7 @@ async function recognizeImage(fileId, expectedMonth) {
   const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content
   const rawResponse = JSON.stringify(response).slice(0, 8000)
   try {
-    const recognized = parseModelContent(content)
+    const recognized = parseModelContent(content, fileIds.length)
     return { ...recognized, provider: 'openai-compatible', model: AI_MODEL, rawResponse }
   } catch (error) {
     error.rawResponse = rawResponse
@@ -157,6 +164,8 @@ function publicSubmission(record) {
     submissionId: record._id || record.submissionKey,
     month: record.month,
     evidenceFileId: record.evidenceFileId,
+    evidenceFileIds: record.evidenceFileIds || [],
+    evidenceCount: (record.evidenceFileIds || []).length,
     recognitionStatus: record.recognitionStatus,
     reviewStatus: record.reviewStatus,
     memberConfirmedEquivalentKm: record.memberConfirmedEquivalentKm,
@@ -202,19 +211,25 @@ exports.main = async (event = {}) => {
   }
 
   if (action !== 'recognize') throw new Error('不支持的提交操作')
-  const evidenceFileId = String(event.evidenceFileId || '')
-  if (!evidenceFileId.startsWith('cloud://')) throw new Error('请先上传有效的运动截图')
+  const suppliedFileIds = Array.isArray(event.evidenceFileIds) ? event.evidenceFileIds : [event.evidenceFileId]
+  const evidenceFileIds = [...new Set(suppliedFileIds.map(item => String(item || '')).filter(Boolean))]
+  if (!evidenceFileIds.length || evidenceFileIds.length > MAX_SCREENSHOT_COUNT || evidenceFileIds.some(fileId => !fileId.startsWith('cloud://'))) {
+    throw new Error(`请上传 1 至 ${MAX_SCREENSHOT_COUNT} 张有效的运动截图`)
+  }
+  const evidenceFileId = evidenceFileIds[0]
   let previous = null
   try { previous = (await records.doc(recordId).get()).data } catch (_) {}
   const previousEvidenceFileIds = Array.isArray(previous && previous.evidenceFileIds) ? previous.evidenceFileIds : []
+  const oldEvidenceFileIds = Array.isArray(previous && previous.previousEvidenceFileIds) ? previous.previousEvidenceFileIds : []
   const baseRecord = {
     submissionKey: recordId, userId: user._id, historicalMemberId: user.historicalMemberId, month,
-    evidenceFileId, evidenceFileIds: [...new Set([...previousEvidenceFileIds, evidenceFileId])].slice(-8), recognitionStatus: 'analyzing', reviewStatus: 'pending_member_confirmation',
+    evidenceFileId, evidenceFileIds, previousEvidenceFileIds: [...new Set([...oldEvidenceFileIds, ...previousEvidenceFileIds])].filter(fileId => !evidenceFileIds.includes(fileId)).slice(-12),
+    recognitionStatus: 'analyzing', reviewStatus: 'pending_member_confirmation',
     updatedAt: db.serverDate(), submittedAt: db.serverDate(), revision: Number(previous && previous.revision || 0) + 1
   }
   await records.doc(recordId).set({ data: baseRecord })
   try {
-    const recognition = await recognizeImage(evidenceFileId, month)
+    const recognition = await recognizeImages(evidenceFileIds, month)
     const result = { ...baseRecord, recognitionStatus: 'recognized', recognition, reviewStatus: 'pending_member_confirmation' }
     await records.doc(recordId).update({ data: { recognitionStatus: 'recognized', recognition, reviewStatus: 'pending_member_confirmation', recognizedAt: db.serverDate(), updatedAt: db.serverDate() } })
     return { submission: publicSubmission(result) }

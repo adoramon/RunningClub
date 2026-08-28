@@ -30,12 +30,12 @@ function getActivitySubmission() {
   return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'get' } }).then(result => result.result)
 }
 
-function recognizeActivityScreenshot(evidenceFileId) {
-  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'recognize', evidenceFileId } }).then(result => result.result)
+function recognizeActivityScreenshots(evidenceFileIds) {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'recognize', evidenceFileIds } }).then(result => result.result)
 }
 
 function confirmActivitySubmission(confirmedEquivalentKm) {
   return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'confirm', confirmedEquivalentKm } }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshot, confirmActivitySubmission }
+module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission }
