@@ -3,6 +3,7 @@ page { background: #F8F7F3; color: #18251F; font-family: -apple-system, BlinkMac
 .card { background: #FFFFFF; border-radius: 24rpx; padding: 30rpx; box-shadow: 0 8rpx 28rpx rgba(29, 53, 40, .06); }
 .eyebrow { color: #1F6F54; font-size: 23rpx; font-weight: 700; letter-spacing: 2rpx; }
 .title { font-size: 50rpx; font-weight: 800; line-height: 1.25; }
+.title > text { display: block; }
 .muted { color: #788078; font-size: 26rpx; line-height: 1.6; }
 .primary-btn { background: #1F6F54 !important; color: #FFF !important; border-radius: 14rpx; font-size: 29rpx; font-weight: 700; }
 .primary-btn::after { border: none; }

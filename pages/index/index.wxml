@@ -34,4 +34,4 @@
     </view>
   </view>
 </view>
-<view wx:else class="page gate"><image class="gate-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="title">正在验证<br/>跑团身份</view><view class="muted">完成微信昵称、头像与历史艺名绑定后即可进入。</view></view>
+<view wx:else class="page gate"><image class="gate-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="title"><text>正在验证</text><text>跑团身份</text></view><view class="muted">完成微信昵称、头像与历史艺名绑定后即可进入。</view></view>
