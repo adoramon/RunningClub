@@ -44,24 +44,6 @@ function publicEntry(entry, displayNames = new Map()) {
   }
 }
 
-// 旧台账只有月度汇总时，不能编造成员或用途；但对于“39+30+120”这种
-// 明确保留在原单元格中的加法公式，可如实拆成无归属的原始缴入项，方便公示查阅。
-function historicalIncomeDetails(entry) {
-  const raw = entry.source && entry.source.raw
-  if (entry.entryType !== 'legacy_monthly_income' || typeof raw !== 'string') return []
-  const expression = raw.replace(/\s/g, '')
-  if (!/^=\d+(?:\.\d+)?(?:\+\d+(?:\.\d+)?)+$/.test(expression)) return []
-  const values = expression.slice(1).split('+').map(Number)
-  if (roundMoney(values.reduce((sum, value) => sum + value, 0)) !== roundMoney(entry.amount)) return []
-  return values.map((value, index) => ({
-    entryId: `${entry._id}-detail-${index + 1}`,
-    month: entry.month || '', dateLabel: entry.month || '历史记录', entryType: 'legacy_income_detail',
-    typeLabel: '历史缴入明细', amount: value, amountText: `+${formatMoney(value)}`, direction: 'income',
-    purpose: `原始台账拆分项 ${index + 1}${entry.source.cell ? `（${entry.source.cell}）` : ''}`,
-    operatorAlias: ''
-  }))
-}
-
 async function confirmedEntries(source = db) {
   const result = await source.collection('fund_ledger').where({ status: 'confirmed' }).limit(100).get()
   return result.data
@@ -77,6 +59,22 @@ async function memberDisplayNames() {
     if (user.historicalMemberId && user.nickname) names.set(user.historicalMemberId, user.nickname)
   })
   return names
+}
+
+async function historicalFundDetails(month, monthEntries, displayNames) {
+  const historicalIncome = monthEntries.filter(entry => entry.entryType === 'legacy_monthly_income')
+  const expected = roundMoney(historicalIncome.reduce((sum, entry) => sum + Number(entry.amount || 0), 0))
+  if (!month || expected <= 0) return new Map()
+  const result = await db.collection('historical_monthly_records').where({ month }).field({ legacyMemberKey: true, fundAmount: true }).limit(100).get()
+  const details = result.data.filter(record => isNumber(record.fundAmount) && record.fundAmount > 0)
+  const actual = roundMoney(details.reduce((sum, record) => sum + record.fundAmount, 0))
+  if (actual !== expected) return new Map()
+  return new Map(historicalIncome.map(entry => [entry._id, details.map((record, index) => ({
+    entryId: `${entry._id}-member-${index + 1}`,
+    month, dateLabel: month, entryType: 'legacy_member_payment', typeLabel: '缴纳公积金',
+    amount: record.fundAmount, amountText: `+${formatMoney(record.fundAmount)}`, direction: 'income',
+    purpose: `${displayNames.get(record.legacyMemberKey) || '历史成员'}缴纳`, operatorAlias: ''
+  }))]))
 }
 
 function summarize(entries) {
@@ -127,11 +125,10 @@ function buildMonthlyYears(entries) {
 async function listLedger(user) {
   const [entries, displayNames] = await Promise.all([confirmedEntries(), memberDisplayNames()])
   const summary = summarize(entries)
-  const items = entries.flatMap(entry => {
-    const details = historicalIncomeDetails(entry)
-    return details.length ? details : [publicEntry(entry, displayNames)]
-  }).sort((a, b) => String(b.month).localeCompare(String(a.month)) || b.entryId.localeCompare(a.entryId))
   const recentMonth = [...new Set(entries.map(entry => entry.month).filter(Boolean))].sort().pop() || ''
+  const recentMonthEntries = entries.filter(entry => entry.month === recentMonth)
+  const historicalDetails = await historicalFundDetails(recentMonth, recentMonthEntries, displayNames)
+  const items = entries.flatMap(entry => historicalDetails.get(entry._id) || [publicEntry(entry, displayNames)]).sort((a, b) => String(b.month).localeCompare(String(a.month)) || b.entryId.localeCompare(a.entryId))
   return {
     isAdmin: ADMIN_MEMBER_IDS.has(user.historicalMemberId), balance: summary.balance, balanceText: formatMoney(summary.balance),
     incomeText: formatMoney(summary.income), withdrawalText: formatMoney(summary.withdrawal),
