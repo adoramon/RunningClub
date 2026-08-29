@@ -8,9 +8,30 @@ function previousMonth() {
 }
 
 const activityLabels = { running: '跑步', cycling: '骑行', swimming: '游泳', jump_rope: '跳绳', elevation: '累计爬升', custom: '其他运动（需审核）' }
+const round = value => Math.round(value * 100) / 100
+
+function clientEquivalentKm(activity, rawValue) {
+  const value = Number(rawValue)
+  if (!Number.isFinite(value) || value < 0) return null
+  const distanceKm = activity.rawUnit === 'm' ? value / 1000 : value
+  switch (activity.activityType) {
+    case 'running': return round(distanceKm)
+    case 'cycling': return round(distanceKm / 3)
+    case 'swimming': return round(distanceKm * 5)
+    case 'jump_rope': return round(value / 100)
+    case 'elevation': return round(value * 0.02)
+    default: return null
+  }
+}
+
+function clientUnitValid(activity) {
+  if (['running', 'cycling', 'swimming'].includes(activity.activityType)) return activity.rawUnit === 'km' || activity.rawUnit === 'm'
+  if (activity.activityType === 'jump_rope') return activity.rawUnit === 'count'
+  return activity.activityType === 'elevation' ? activity.rawUnit === 'm' : false
+}
 
 Page({
-  data: { month: previousMonth(), images: [], submission: null, activities: [], equivalentKm: '', loading: false },
+  data: { month: previousMonth(), images: [], submission: null, activities: [], reviewActivities: [], evidenceFiles: [], reviewTotalText: '0.00', loading: false },
   onShow() { this.loadSubmission() },
   async loadSubmission() {
     try {
@@ -22,19 +43,24 @@ Page({
   },
   applySubmission(submission) {
     const recognition = submission.recognition || {}
-    const activities = (recognition.activities || []).map(item => ({
+    const activities = (recognition.activities || []).map((item, activityIndex) => ({
       ...item,
+      activityIndex,
       activityLabel: activityLabels[item.activityType] || activityLabels.custom,
       equivalentText: typeof item.equivalentKm === 'number' ? item.equivalentKm : '待审核',
       evidenceImageIndex: item.evidenceImageIndex || 1
     }))
+    const reviewActivities = activities.map(item => ({
+      ...item, invalidUnit: !clientUnitValid(item), included: clientUnitValid(item), rawValueText: String(item.rawValue),
+      reviewEquivalentKm: item.equivalentKm, reviewEquivalentText: typeof item.equivalentKm === 'number' ? item.equivalentKm.toFixed(2) : '待审核'
+    }))
     this.setData({
       submission,
       activities,
+      reviewActivities,
+      evidenceFiles: (submission.evidenceFileIds || []).map((fileId, index) => ({ fileId, index: index + 1 })),
       confidenceText: Math.round((recognition.confidence || 0) * 100),
-      equivalentKm: submission.memberConfirmedEquivalentKm === null || submission.memberConfirmedEquivalentKm === undefined
-        ? (recognition.suggestedEquivalentKm === null || recognition.suggestedEquivalentKm === undefined ? '' : String(recognition.suggestedEquivalentKm))
-        : String(submission.memberConfirmedEquivalentKm)
+      reviewTotalText: this.reviewTotalText(reviewActivities)
     })
   },
   async chooseImages() {
@@ -48,7 +74,25 @@ Page({
       this.setData({ images })
     } catch (_) {}
   },
-  inputEquivalentKm(event) { this.setData({ equivalentKm: event.detail.value }) },
+  reviewTotalText(reviewActivities) {
+    const total = reviewActivities.reduce((sum, item) => sum + (item.included && typeof item.reviewEquivalentKm === 'number' ? item.reviewEquivalentKm : 0), 0)
+    return round(total).toFixed(2)
+  },
+  inputActivityValue(event) {
+    const activityIndex = Number(event.currentTarget.dataset.index)
+    const rawValueText = event.detail.value
+    const reviewActivities = this.data.reviewActivities.map(item => {
+      if (item.activityIndex !== activityIndex) return item
+      const reviewEquivalentKm = clientEquivalentKm(item, rawValueText)
+      return { ...item, rawValueText, reviewEquivalentKm, reviewEquivalentText: typeof reviewEquivalentKm === 'number' ? reviewEquivalentKm.toFixed(2) : '—' }
+    })
+    this.setData({ reviewActivities, reviewTotalText: this.reviewTotalText(reviewActivities) })
+  },
+  toggleActivity(event) {
+    const activityIndex = Number(event.currentTarget.dataset.index)
+    const reviewActivities = this.data.reviewActivities.map(item => item.activityIndex === activityIndex && !item.invalidUnit ? { ...item, included: !item.included } : item)
+    this.setData({ reviewActivities, reviewTotalText: this.reviewTotalText(reviewActivities) })
+  },
   async recognize() {
     if (!this.data.images.length) return wx.showToast({ title: '请先选择运动记录截图', icon: 'none' })
     this.setData({ loading: true })
@@ -73,11 +117,11 @@ Page({
     }
   },
   async confirm() {
-    const value = Number(this.data.equivalentKm)
-    if (!Number.isFinite(value) || value < 0 || value > 10000) return wx.showToast({ title: '请确认有效的等效跑量', icon: 'none' })
+    const reviewedActivities = this.data.reviewActivities.map(item => ({ activityIndex: item.activityIndex, included: item.included, rawValue: item.rawValueText }))
+    if (!reviewedActivities.some(item => item.included)) return wx.showToast({ title: '请至少计入一项运动', icon: 'none' })
     this.setData({ loading: true })
     try {
-      const { submission } = await confirmActivitySubmission(value)
+      const { submission } = await confirmActivitySubmission({ reviewedActivities, confirmedEquivalentKm: this.data.reviewTotalText })
       this.applySubmission(submission)
       wx.showToast({ title: '已提交，等待管理员审核', icon: 'success' })
     } catch (error) {

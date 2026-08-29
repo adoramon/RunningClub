@@ -34,8 +34,8 @@ function recognizeActivityScreenshots(evidenceFileIds) {
   return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'recognize', evidenceFileIds } }).then(result => result.result)
 }
 
-function confirmActivitySubmission(confirmedEquivalentKm) {
-  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'confirm', confirmedEquivalentKm } }).then(result => result.result)
+function confirmActivitySubmission({ reviewedActivities, confirmedEquivalentKm }) {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'confirm', reviewedActivities, confirmedEquivalentKm } }).then(result => result.result)
 }
 
 function cancelActivityRecognition() {

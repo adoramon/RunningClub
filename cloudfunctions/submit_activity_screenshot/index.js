@@ -120,6 +120,32 @@ function parseModelContent(content, imageCount) {
   }
 }
 
+function reviewedActivitiesFor(activities, requestedReviews) {
+  if (!Array.isArray(requestedReviews)) return null
+  const requestedByIndex = {}
+  requestedReviews.forEach(item => {
+    const activityIndex = Number(item && item.activityIndex)
+    if (!Number.isInteger(activityIndex) || activityIndex < 0 || activityIndex >= activities.length || requestedByIndex[activityIndex]) {
+      throw new Error('提交的核对项目无效')
+    }
+    requestedByIndex[activityIndex] = item
+  })
+  return activities.map((activity, activityIndex) => {
+    const requested = requestedByIndex[activityIndex] || {}
+    const included = requested.included !== false
+    const hasValue = Object.prototype.hasOwnProperty.call(requested, 'rawValue')
+    const rawValue = hasValue ? Number(requested.rawValue) : Number(activity.rawValue)
+    if (!Number.isFinite(rawValue) || rawValue < 0 || rawValue > 10000000) throw new Error('请填写有效的原始运动数值')
+    if (included && !isValidActivityUnit(activity.activityType, activity.rawUnit)) throw new Error('存在单位不匹配的识别项，请取消该项目后再提交')
+    const equivalentKm = included ? activityEquivalentKm({ ...activity, rawValue }) : 0
+    if (included && equivalentKm === null) throw new Error('存在无法自动换算的运动，请取消该项目后再提交')
+    return {
+      activityIndex, activityType: activity.activityType, rawValue: round(rawValue), rawUnit: activity.rawUnit,
+      equivalentKm: round(equivalentKm), included, evidenceImageIndex: activity.evidenceImageIndex, evidence: activity.evidence
+    }
+  })
+}
+
 function requestJson(options, headers, body) {
   return new Promise((resolve, reject) => {
     const request = https.request({ ...options, method: 'POST', headers }, response => {
@@ -192,6 +218,7 @@ function publicSubmission(record) {
     recognitionStatus: record.recognitionStatus,
     reviewStatus: record.reviewStatus,
     memberConfirmedEquivalentKm: record.memberConfirmedEquivalentKm,
+    memberReviewedActivities: record.memberReviewedActivities || [],
     recognition: {
       sourceApp: recognition.sourceApp || '', screenshotMonth: recognition.screenshotMonth || null,
       confidence: recognition.confidence || 0, activities: recognition.activities || [],
@@ -222,15 +249,18 @@ exports.main = async (event = {}) => {
 
   if (action === 'confirm') {
     const current = (await records.doc(recordId).get()).data
-    if (!current || current.recognitionStatus !== 'recognized') throw new Error('请先完成截图识别')
+    if (!current || current.recognitionStatus !== 'recognized' || current.reviewStatus !== 'pending_member_confirmation') throw new Error('请先完成截图识别')
     const suggested = current.recognition && current.recognition.suggestedEquivalentKm
-    const supplied = event.confirmedEquivalentKm === '' || event.confirmedEquivalentKm === undefined ? suggested : Number(event.confirmedEquivalentKm)
+    const reviewedActivities = reviewedActivitiesFor((current.recognition && current.recognition.activities) || [], event.reviewedActivities)
+    const supplied = reviewedActivities
+      ? round(reviewedActivities.reduce((sum, item) => sum + (item.included ? item.equivalentKm : 0), 0))
+      : (event.confirmedEquivalentKm === '' || event.confirmedEquivalentKm === undefined ? suggested : Number(event.confirmedEquivalentKm))
     if (!Number.isFinite(supplied) || supplied < 0 || supplied > 10000) throw new Error('请确认有效的等效跑量')
     await records.doc(recordId).update({ data: {
       memberConfirmedEquivalentKm: round(supplied), memberConfirmedAt: db.serverDate(),
-      reviewStatus: 'pending_admin_review', updatedAt: db.serverDate()
+      memberReviewedActivities: reviewedActivities || [], reviewStatus: 'pending_admin_review', updatedAt: db.serverDate()
     } })
-    return { submission: publicSubmission({ ...current, memberConfirmedEquivalentKm: round(supplied), reviewStatus: 'pending_admin_review' }) }
+    return { submission: publicSubmission({ ...current, memberConfirmedEquivalentKm: round(supplied), memberReviewedActivities: reviewedActivities || [], reviewStatus: 'pending_admin_review' }) }
   }
 
   if (action === 'cancel') {

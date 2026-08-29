@@ -16,12 +16,12 @@
 
   <view wx:if="{{submission && submission.recognitionStatus === 'recognized'}}" class="card result-card">
     <view class="result-heading"><view><view class="field-label">识别结果</view><view class="result-meta">已分析 {{submission.evidenceCount || 1}} 张截图 · 置信度 {{confidenceText}}%</view></view><view class="result-tag">待确认</view></view>
-    <view wx:for="{{activities}}" wx:key="index" class="activity-row"><view><view class="activity-name">{{item.activityLabel}}</view><view class="activity-raw">第 {{item.evidenceImageIndex}} 张截图 · {{item.rawValue}} {{item.rawUnit}}</view></view><view class="activity-equivalent">{{item.equivalentText}}<text wx:if="{{item.equivalentText !== '待审核'}}"> km</text></view></view>
+    <view wx:if="{{evidenceFiles.length}}" class="proof-strip"><image wx:for="{{evidenceFiles}}" wx:key="fileId" class="proof-thumbnail" src="{{item.fileId}}" mode="aspectFill"/><view class="proof-copy">核对截图与每项识别依据</view></view>
+    <view class="review-intro">请逐项核对。可修改原始数值或选择“不计入”；系统会按规则重新计算总跑量。</view>
+    <view wx:for="{{reviewActivities}}" wx:key="activityIndex" class="activity-row review-row {{item.included ? '' : 'excluded'}}"><view class="activity-main"><view class="activity-name">{{item.activityLabel}} <text class="proof-index">截图 {{item.evidenceImageIndex}}</text></view><view class="activity-evidence">依据：{{item.evidence || '模型未提供文字依据'}}</view><view class="raw-editor"><input type="digit" value="{{item.rawValueText}}" data-index="{{item.activityIndex}}" bindinput="inputActivityValue" disabled="{{!item.included}}"/><text>{{item.rawUnit}}</text></view></view><view class="activity-side"><view class="activity-equivalent">{{item.included ? item.reviewEquivalentText : '—'}}<text wx:if="{{item.included}}"> km</text></view><button class="activity-toggle {{item.included ? '' : 'is-excluded'}}" data-index="{{item.activityIndex}}" bindtap="toggleActivity" disabled="{{item.invalidUnit}}">{{item.invalidUnit ? '已拦截' : (item.included ? '不计入' : '计入')}}</button></view></view>
     <view wx:if="{{submission.evidenceCount > 1}}" class="review-note">已合并多张截图，请确认不同截图没有重复展示同一份月度总量。</view>
     <view wx:if="{{submission.recognition.notes.length}}" class="review-note">{{submission.recognition.notes[0]}}</view>
-    <view class="field-label total-label">确认计入的等效跑量</view>
-    <view class="distance-input"><input type="digit" placeholder="0.00" value="{{equivalentKm}}" bindinput="inputEquivalentKm"/><text>km</text></view>
-    <view class="confirmation-tip">确认后将进入管理员审核；公积金不会在此步骤自动扣缴。</view>
+    <view class="review-total"><view><view class="field-label">确认计入的等效跑量</view><view class="confirmation-tip">由上方已计入项目重新换算；确认后进入管理员审核。</view></view><view class="review-total-number">{{reviewTotalText}}<text> km</text></view></view>
     <view class="result-actions"><button class="cancel-btn" disabled="{{loading}}" bindtap="cancelRecognition">取消本次识别</button><button class="primary-btn submit confirm-btn" loading="{{loading}}" bindtap="confirm">确认并提交审核</button></view>
   </view>
 
