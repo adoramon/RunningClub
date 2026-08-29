@@ -34,6 +34,7 @@
       { "type": "folder", "value": "docs" },
       { "type": "folder", "value": "scripts" },
       { "type": "folder", "value": "cloudfunctions" },
+      { "type": "folder", "value": "assets/announcements" },
       { "type": "file", "value": "README.md" },
       { "type": "file", "value": "assets/images/dongcheng-xijiu-logo-v2.png" }
     ],
