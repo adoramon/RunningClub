@@ -1,4 +1,5 @@
 const { getMemberHistoricalProfile } = require('../../services/cloud')
+const reviewDemo = require('../../services/review-demo')
 
 Page({
   data: { profile: null, profileName: '', historyYears: [], average: '—', best: '—', trendHasData: false, evaluationLoading: false, loading: true },
@@ -9,7 +10,8 @@ Page({
       return
     }
     try {
-      const profile = await getMemberHistoricalProfile(memberId)
+      const session = getApp().globalData.session
+      const profile = session && session.user && session.user.reviewAccess && !session.user.historicalMemberId ? reviewDemo.demoProfile(memberId) : await getMemberHistoricalProfile(memberId)
       const recentTrend = profile.recentTrend || []
       this.setData({
         profile,

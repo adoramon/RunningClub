@@ -1,15 +1,21 @@
 const { getHistoricalDashboard, getLifetimeStats } = require('../../services/cloud')
+const reviewDemo = require('../../services/review-demo')
 
 Page({
   data: { dashboard: null, pct: 0, authorized: false, redirecting: false },
   onShow() {
     const app = getApp()
     app.globalData.sessionPromise.then(session => {
-      if (!session || !session.user.historicalMemberId) {
+      if (!session || (!session.user.historicalMemberId && !session.user.reviewAccess)) {
         if (!this.data.redirecting) {
           this.setData({ redirecting: true })
           wx.navigateTo({ url: '/pages/register/register' })
         }
+        return
+      }
+      if (session.user.reviewAccess && !session.user.historicalMemberId) {
+        const dashboard = reviewDemo.demoDashboard()
+        this.setData({ authorized: true, redirecting: false, dashboard, pct: dashboard.completionPct })
         return
       }
       this.setData({ authorized: true, redirecting: false })

@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">DONGCHENG XIJIU · REVIEW</view></view>
+  <view class="title"><text>审核体验</text><text>安全入口</text></view>
+  <view class="intro muted">本入口仅展示隔离的演示跑团数据，不会读取、认领或修改真实成员的历史记录。</view>
+  <view class="card form-card">
+    <view class="field-label">微信昵称</view>
+    <input class="input nickname-input" type="nickname" placeholder="点击后使用微信昵称填写" value="{{wechatNickname}}" data-field="wechatNickname" bindinput="input" bindnicknamereview="nicknameReview" maxlength="20" />
+    <view class="field-label target-label">微信头像</view><button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar"><image wx:if="{{avatarPath}}" src="{{avatarPath}}" mode="aspectFill"/><text wx:else>选择头像</text></button>
+    <view class="field-label target-label">审核码</view><input class="input" password placeholder="由小程序管理员提供" value="{{accessCode}}" data-field="accessCode" bindinput="input" maxlength="64" />
+  </view>
+  <button class="primary-btn save" loading="{{loading}}" bindtap="enter">进入审核体验</button>
+</view>

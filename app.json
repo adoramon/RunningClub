@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/register/register",
+    "pages/review-access/review-access",
     "pages/upload/upload",
     "pages/review/review",
     "pages/analysis/analysis",

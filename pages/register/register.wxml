@@ -11,4 +11,5 @@
     <view class="field-label target-label">确认历史艺名</view><input class="input" placeholder="可从建议中选择或手动填写" value="{{alias}}" data-field="alias" bindinput="input" maxlength="12" />
   </view>
   <button class="primary-btn save" bindtap="save">{{claimed ? '确认当前身份' : '验证并绑定'}}</button>
+  <button class="review-entry" bindtap="goReviewAccess">微信审核员体验入口</button>
 </view>

@@ -6,6 +6,10 @@ function claimHistoricalIdentity(payload) {
   return wx.cloud.callFunction({ name: 'claim_historical_identity', data: payload }).then(result => result.result)
 }
 
+function claimReviewAccess(payload) {
+  return wx.cloud.callFunction({ name: 'claim_review_access', data: payload }).then(result => result.result)
+}
+
 function suggestHistoricalAliases({ nickname }) {
   return wx.cloud.callFunction({ name: 'suggest_historical_aliases', data: { nickname } }).then(result => result.result)
 }
@@ -66,4 +70,4 @@ function generateMonthlyEvaluation() {
   return wx.cloud.callFunction({ name: 'generate_monthly_evaluation' }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission, confirmPendingFundPayment, generateMonthlyEvaluation }
+module.exports = { getCurrentUser, claimHistoricalIdentity, claimReviewAccess, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission, confirmPendingFundPayment, generateMonthlyEvaluation }

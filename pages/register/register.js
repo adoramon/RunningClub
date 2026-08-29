@@ -21,6 +21,7 @@ Page({
     try { this.setData({ suggestions: await cloud.suggestHistoricalAliases({ nickname: wechatNickname.trim() }) }) } catch (error) { wx.showToast({ title: '匹配失败，请稍后重试', icon: 'none' }) } finally { wx.hideLoading() }
   },
   selectAlias(e) { this.setData({ alias: e.currentTarget.dataset.alias }) },
+  goReviewAccess() { wx.navigateTo({ url: '/pages/review-access/review-access' }) },
   async save() {
     const { wechatNickname, alias, avatarPath } = this.data
     if (!wechatNickname.trim() || !avatarPath) return wx.showToast({ title: '请先完成昵称和头像授权', icon: 'none' })

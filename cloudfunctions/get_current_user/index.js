@@ -19,7 +19,7 @@ exports.main = async () => {
 
   const memberships = await db.collection('club_members').where({ userId: user._id, status: 'active' }).get()
   return {
-    user: { _id: user._id, nickname: user.nickname, avatarFileId: user.avatarFileId, historicalMemberId: user.historicalMemberId || null },
+    user: { _id: user._id, nickname: user.nickname, avatarFileId: user.avatarFileId, historicalMemberId: user.historicalMemberId || null, reviewAccess: Boolean(user.reviewAccess) },
     memberships: memberships.data
   }
 }
