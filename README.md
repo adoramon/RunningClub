@@ -13,6 +13,7 @@
 ## 品牌资源
 
 - 团徽：[`assets/images/dongcheng-xijiu-logo.png`](assets/images/dongcheng-xijiu-logo.png)，用于认领页和看板品牌标识。
+- 平台头像候选：[`assets/images/dongcheng-xijiu-logo-v2.png`](assets/images/dongcheng-xijiu-logo-v2.png)。这是为微信公众平台生成的圆形裁切友好 PNG（1254 × 1254，约 1.2MB），可直接在“账号设置 → 小程序头像”上传；尚未替换小程序内现有团徽。
 - 马拉松主视觉：[`assets/images/marathon-hero.jpg`](assets/images/marathon-hero.jpg)，用于看板首页首屏；已压缩为适合小程序加载的版本。
 
 ## 本地预览
