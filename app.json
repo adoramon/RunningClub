@@ -3,6 +3,7 @@
     "pages/index/index",
     "pages/register/register",
     "pages/upload/upload",
+    "pages/review/review",
     "pages/analysis/analysis",
     "pages/member-analysis/member-analysis"
   ],

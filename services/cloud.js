@@ -42,4 +42,12 @@ function cancelActivityRecognition() {
   return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'cancel' } }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition }
+function getPendingActivityReviews() {
+  return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'list' } }).then(result => result.result)
+}
+
+function approveActivityReview(submissionId) {
+  return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'approve', submissionId } }).then(result => result.result)
+}
+
+module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview }

@@ -1,0 +1,8 @@
+{
+  "name": "review_activity_submissions",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

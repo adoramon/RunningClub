@@ -3,6 +3,7 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 let lifetimeCache = { expiresAt: 0, value: null }
+const ADMIN_MEMBER_IDS = new Set(['legacy-member-001', 'legacy-member-023'])
 
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 const round = value => Math.round(value * 100) / 100
@@ -204,13 +205,14 @@ exports.main = async (event = {}) => {
   if (event.mode === 'lifetime') return getLifetimeStats()
   if (event.mode === 'profile') return getMemberProfile(event.memberId || user.historicalMemberId)
 
-  const [memberResult, summaryRecordsResult, allMembersResult, ownRecordsResult, linkedUsersResult, ledgerResult] = await Promise.all([
+  const [memberResult, summaryRecordsResult, allMembersResult, ownRecordsResult, linkedUsersResult, ledgerResult, pendingReviewResult] = await Promise.all([
     db.collection('historical_members').doc(user.historicalMemberId).get(),
     db.collection('historical_monthly_records').where({ month: monthOffset(-1) }).limit(100).get(),
     db.collection('historical_members').limit(100).get(),
     db.collection('historical_monthly_records').where({ legacyMemberKey: user.historicalMemberId }).orderBy('month', 'desc').limit(100).get(),
     db.collection('users').field({ historicalMemberId: true, nickname: true, wechatNickname: true, avatarFileId: true }).limit(100).get(),
-    db.collection('fund_ledger').where({ status: 'confirmed' }).limit(100).get()
+    db.collection('fund_ledger').where({ status: 'confirmed' }).limit(100).get(),
+    ADMIN_MEMBER_IDS.has(user.historicalMemberId) ? db.collection('activity_records').where({ reviewStatus: 'pending_admin_review' }).limit(100).get() : Promise.resolve({ data: [] })
   ])
 
   const summaryMonth = monthOffset(-1)
@@ -292,6 +294,8 @@ exports.main = async (event = {}) => {
     members: summaryRows,
     ranking,
     myLastMonthSubmitted: Boolean(ranking.find(row => row.isMe && row.submitted)),
+    isAdmin: ADMIN_MEMBER_IDS.has(user.historicalMemberId),
+    pendingReviewCount: pendingReviewResult.data.length,
     profile
   }
 }
