@@ -58,4 +58,8 @@ function resolveMissingSubmission({ memberId, resolution }) {
   return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'resolve_missing', memberId, resolution } }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission }
+function confirmPendingFundPayment({ memberId }) {
+  return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'confirm_fund_payment', memberId } }).then(result => result.result)
+}
+
+module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission, confirmPendingFundPayment }

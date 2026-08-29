@@ -1,4 +1,4 @@
-const { getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission } = require('../../services/cloud')
+const { getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission, confirmPendingFundPayment } = require('../../services/cloud')
 
 const labels = { running: '跑步', cycling: '骑行', swimming: '游泳', jump_rope: '跳绳', elevation: '累计爬升', custom: '其他运动' }
 
@@ -44,13 +44,14 @@ function enrichReview(review) {
 }
 
 Page({
-  data: { reviews: [], missingSubmissions: [], loading: true, actingId: '' },
+  data: { reviews: [], missingSubmissions: [], pendingFundPayments: [], loading: true, actingId: '' },
   onShow() { this.loadReviews() },
   async loadReviews() {
     this.setData({ loading: true })
     try {
-      const { reviews, missingSubmissions } = await getPendingActivityReviews()
-      this.setData({ reviews: (reviews || []).map(enrichReview), missingSubmissions: missingSubmissions || [] })
+      const result = await getPendingActivityReviews()
+      this.setData({ reviews: (result.reviews || []).map(enrichReview), missingSubmissions: result.missingSubmissions || [], pendingFundPayments: result.pendingFundPayments || [] })
+      return result
     } catch (error) {
       console.error('读取审核队列失败', error)
       wx.showToast({ title: '读取审核队列失败', icon: 'none' })
@@ -101,7 +102,9 @@ Page({
         try {
           await approveActivityReview({ submissionId, reviewedActivities: review.activities.map(item => ({ activityIndex: item.activityIndex, rawValue: item.rawValueText, included: item.included })) })
           wx.showToast({ title: '审核已通过', icon: 'success' })
-          this.loadReviews()
+          const refreshed = await this.loadReviews()
+          const payment = (refreshed && refreshed.pendingFundPayments || []).find(item => item.memberId === review.memberId || item.alias === review.memberAlias)
+          if (payment) this.promptFundPayment(payment)
         } catch (error) {
           console.error('通过审核失败', error)
           wx.showToast({ title: '审核失败，请稍后重试', icon: 'none' })
@@ -165,5 +168,27 @@ Page({
         }
       }
     })
+  },
+  promptFundPayment(payment) {
+    wx.showModal({
+      title: '跑量未达标，确认已缴公积金？',
+      content: `${payment.displayName} 上月实际 ${payment.actualText} km，承诺 ${payment.targetText} km，连续未达标第 ${payment.failureStreak} 月，应缴 ¥${payment.fundDueText}。`,
+      confirmText: '确认已缴 ¥' + payment.fundDueText,
+      confirmColor: '#1F6F54',
+      success: result => {
+        if (result.confirm) this.confirmFundPayment(payment.memberId)
+      }
+    })
+  },
+  confirmFundPayment(argument) {
+    const memberId = typeof argument === 'string' ? argument : argument.currentTarget.dataset.id
+    this.setData({ actingId: memberId })
+    confirmPendingFundPayment({ memberId }).then(() => {
+      wx.showToast({ title: '已计入公积金', icon: 'success' })
+      return this.loadReviews()
+    }).catch(error => {
+      console.error('确认公积金失败', error)
+      wx.showToast({ title: error.message || '确认失败，请稍后重试', icon: 'none' })
+    }).finally(() => this.setData({ actingId: '' }))
   }
 })

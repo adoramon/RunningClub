@@ -91,6 +91,75 @@ async function findMissingSubmissions() {
   }))
 }
 
+function approvedEquivalentKm(record) {
+  if (!record || record.reviewStatus !== 'approved') return null
+  if (isNumber(record.adminApprovedEquivalentKm)) return round(record.adminApprovedEquivalentKm)
+  return isNumber(record.memberConfirmedEquivalentKm) ? round(record.memberConfirmedEquivalentKm) : null
+}
+
+async function findPendingFundPayments() {
+  const month = summaryMonth()
+  const [recordsResult, settlementsResult, activitiesResult, membersResult, usersResult] = await Promise.all([
+    db.collection('historical_monthly_records').where({ month }).limit(100).get(),
+    db.collection('monthly_settlements').where({ month }).limit(100).get(),
+    db.collection('activity_records').where({ month }).limit(100).get(),
+    db.collection('historical_members').limit(100).get(),
+    db.collection('users').field({ historicalMemberId: true, nickname: true, wechatNickname: true, avatarFileId: true }).limit(100).get()
+  ])
+  const settledMemberIds = new Set(settlementsResult.data.map(record => record.historicalMemberId).filter(Boolean))
+  const activityByMemberId = new Map(activitiesResult.data.filter(record => isNumber(approvedEquivalentKm(record))).map(record => [record.historicalMemberId, record]))
+  const membersById = new Map(membersResult.data.map(member => [member.legacyMemberKey || member._id, member]))
+  const usersByMemberId = new Map(usersResult.data.filter(user => user.historicalMemberId).map(user => [user.historicalMemberId, user]))
+  const candidates = recordsResult.data.map(record => {
+    const activity = activityByMemberId.get(record.legacyMemberKey)
+    const actualKm = activity ? approvedEquivalentKm(activity) : (isNumber(record.equivalentKm) ? round(record.equivalentKm) : null)
+    return { ...record, actualKm }
+  }).filter(record => isNumber(record.targetKm) && isNumber(record.actualKm) && record.actualKm < record.targetKm && !isNumber(record.fundAmount) && !settledMemberIds.has(record.legacyMemberKey))
+  return Promise.all(candidates.map(async record => {
+    const memberId = record.legacyMemberKey
+    const history = await db.collection('historical_monthly_records').where({ legacyMemberKey: memberId }).orderBy('month', 'asc').limit(100).get()
+    const failureStreak = previousFailureStreak(history.data, month) + 1
+    const targetKm = round(record.targetKm)
+    const actualKm = round(record.actualKm)
+    const shortfallKm = round(targetKm - actualKm)
+    const fundRatePerKm = 3 * failureStreak
+    const fundDue = round(shortfallKm * fundRatePerKm)
+    const member = membersById.get(memberId) || {}
+    const user = usersByMemberId.get(memberId)
+    return {
+      memberId, month, targetKm, targetText: String(targetKm), actualKm, actualText: String(actualKm), shortfallKm,
+      failureStreak, fundRatePerKm, fundDue, fundDueText: fundDue.toFixed(2),
+      alias: member.alias || '未知成员', displayName: user ? (user.wechatNickname || user.nickname || member.alias) : (member.alias || '未知成员'),
+      avatarFileId: user ? (user.avatarFileId || '') : '', registered: Boolean(user)
+    }
+  }))
+}
+
+async function confirmFundPayment({ admin, candidate, note }) {
+  const settlementId = `settlement-${candidate.month}-${candidate.memberId}`
+  const operatorAlias = admin.historicalMemberId === 'legacy-member-023' ? '高翔' : '元'
+  await db.runTransaction(async transaction => {
+    const settlementRef = transaction.collection('monthly_settlements').doc(settlementId)
+    try {
+      const existing = await settlementRef.get()
+      if (existing && existing.data) throw new Error('该成员的上月记录已被处理')
+    } catch (error) {
+      if (error && error.errCode !== -1 && error.errMsg !== 'document not found') throw error
+    }
+    await settlementRef.set({ data: {
+      historicalMemberId: candidate.memberId, month: candidate.month, targetKm: candidate.targetKm,
+      equivalentKm: candidate.actualKm, shortfallKm: candidate.shortfallKm, isCompleted: false,
+      failureStreak: candidate.failureStreak, fundRatePerKm: candidate.fundRatePerKm, fundDue: candidate.fundDue,
+      status: 'fund_paid', reviewedByUserId: admin._id, reviewedByAlias: operatorAlias, reviewedAt: db.serverDate(), createdAt: db.serverDate()
+    } })
+    await transaction.collection('fund_ledger').doc(`member-payment-${candidate.month}-${candidate.memberId}`).set({ data: {
+      month: candidate.month, entryType: 'member_payment', amount: candidate.fundDue, status: 'confirmed',
+      historicalMemberId: candidate.memberId, settlementId, confirmedByUserId: admin._id, confirmedByAlias: operatorAlias,
+      note, occurredAt: db.serverDate(), createdAt: db.serverDate()
+    } })
+  })
+}
+
 async function currentAdmin() {
   const { OPENID } = cloud.getWXContext()
   const result = await db.collection('users').where({ openid: OPENID }).limit(1).get()
@@ -106,6 +175,7 @@ function publicReview(record, usersById, membersById) {
     ? record.memberReviewedActivities : ((record.recognition && record.recognition.activities) || [])
   return {
     submissionId: record._id,
+    memberId: record.historicalMemberId,
     month: record.month,
     memberName: user.wechatNickname || user.nickname || member.alias || '未知成员',
     memberAlias: member.alias || '',
@@ -152,15 +222,16 @@ exports.main = async (event = {}) => {
   const records = db.collection('activity_records')
 
   if (action === 'list') {
-    const [pending, usersResult, membersResult, missingSubmissions] = await Promise.all([
+    const [pending, usersResult, membersResult, missingSubmissions, pendingFundPayments] = await Promise.all([
       records.where({ reviewStatus: 'pending_admin_review' }).limit(100).get(),
       db.collection('users').field({ _id: true, nickname: true, wechatNickname: true, avatarFileId: true }).limit(100).get(),
       db.collection('historical_members').limit(100).get(),
-      findMissingSubmissions()
+      findMissingSubmissions(),
+      findPendingFundPayments()
     ])
     const usersById = new Map(usersResult.data.map(user => [user._id, user]))
     const membersById = new Map(membersResult.data.map(member => [member.legacyMemberKey || member._id, member]))
-    return { reviews: pending.data.map(record => publicReview(record, usersById, membersById)), missingSubmissions }
+    return { reviews: pending.data.map(record => publicReview(record, usersById, membersById)), missingSubmissions, pendingFundPayments }
   }
 
   if (action === 'approve') {
@@ -205,10 +276,9 @@ exports.main = async (event = {}) => {
     if (!memberId || !['leave', 'fund_paid'].includes(resolution)) throw new Error('缺少有效的未提交处理方式')
     const candidate = (await findMissingSubmissions()).find(item => item.memberId === memberId)
     if (!candidate) throw new Error('该成员当前不在上月未提交名单中，可能已提交或已被处理')
-    const settlementId = `missing-${candidate.month}-${memberId}`
     const operatorAlias = admin.historicalMemberId === 'legacy-member-023' ? '高翔' : '元'
     await db.runTransaction(async transaction => {
-      const settlementRef = transaction.collection('monthly_settlements').doc(settlementId)
+      const settlementRef = transaction.collection('monthly_settlements').doc(`settlement-${candidate.month}-${memberId}`)
       try {
         const existing = await settlementRef.get()
         if (existing && existing.data) throw new Error('该成员的上月未提交记录已被处理')
@@ -227,12 +297,21 @@ exports.main = async (event = {}) => {
       if (resolution === 'fund_paid') {
         await transaction.collection('fund_ledger').doc(`member-payment-${candidate.month}-${memberId}`).set({ data: {
           month: candidate.month, entryType: 'member_payment', amount: candidate.fundDue, status: 'confirmed',
-          historicalMemberId: memberId, settlementId, confirmedByUserId: admin._id, confirmedByAlias: operatorAlias,
+          historicalMemberId: memberId, settlementId: `settlement-${candidate.month}-${memberId}`, confirmedByUserId: admin._id, confirmedByAlias: operatorAlias,
           note: `确认 ${candidate.alias} 缴纳上月未提交跑量公积金`, occurredAt: db.serverDate(), createdAt: db.serverDate()
         } })
       }
     })
     return { resolved: true, resolution, fundDue: resolution === 'fund_paid' ? candidate.fundDue : 0 }
+  }
+
+  if (action === 'confirm_fund_payment') {
+    const memberId = String(event.memberId || '')
+    if (!memberId) throw new Error('缺少成员标识')
+    const candidate = (await findPendingFundPayments()).find(item => item.memberId === memberId)
+    if (!candidate) throw new Error('该成员当前没有待确认的上月公积金')
+    await confirmFundPayment({ admin, candidate, note: `确认 ${candidate.alias} 缴纳上月跑量未达标公积金` })
+    return { confirmed: true, fundDue: candidate.fundDue }
   }
 
   throw new Error('不支持的审核操作')

@@ -26,6 +26,7 @@
   <view wx:if="{{dashboard.isAdmin && (dashboard.pendingReviewCount || dashboard.missingSubmissionCount)}}" class="admin-review-alert" bindtap="goReview"><view class="admin-review-badge">审</view><view class="admin-review-copy"><view wx:if="{{dashboard.pendingReviewCount}}">有 {{dashboard.pendingReviewCount}} 条跑量等待审核</view><view wx:if="{{dashboard.missingSubmissionCount}}">有 {{dashboard.missingSubmissionCount}} 人上月尚未提交</view><view>可核验截图、请假或确认缴纳公积金</view></view><view class="admin-review-action">去管理 →</view></view>
 
   <view wx:if="{{!dashboard.myLastMonthSubmitted}}" class="submit-guide" bindtap="goUpload"><view><view class="submit-guide-title">上月跑量尚未提交</view><view class="submit-guide-copy">上传上月运动软件记录，补全上月排名。</view></view><view class="submit-guide-action">去提交 →</view></view>
+  <view wx:if="{{dashboard.myPendingFundPayment}}" class="fund-payment-guide"><view class="fund-payment-icon">¥</view><view class="fund-payment-copy"><view>上月跑量未达承诺，请尽快缴纳公积金</view><view>实际 {{dashboard.myPendingFundPayment.actualKm}} km / 承诺 {{dashboard.myPendingFundPayment.targetText}} km · 应缴 ¥{{dashboard.myPendingFundPayment.fundDueText}}</view></view></view>
 
   <view class="section-title">上月跑量排名</view>
   <view class="card leaderboard">

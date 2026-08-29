@@ -215,14 +215,16 @@ exports.main = async (event = {}) => {
     db.collection('users').field({ historicalMemberId: true, nickname: true, wechatNickname: true, avatarFileId: true }).limit(100).get(),
     db.collection('fund_ledger').where({ status: 'confirmed' }).limit(100).get(),
     ADMIN_MEMBER_IDS.has(user.historicalMemberId) ? db.collection('activity_records').where({ reviewStatus: 'pending_admin_review' }).limit(100).get() : Promise.resolve({ data: [] }),
-    ADMIN_MEMBER_IDS.has(user.historicalMemberId) ? db.collection('monthly_settlements').where({ month: summaryMonth }).limit(100).get() : Promise.resolve({ data: [] }),
-    ADMIN_MEMBER_IDS.has(user.historicalMemberId) ? db.collection('activity_records').where({ month: summaryMonth }).limit(100).get() : Promise.resolve({ data: [] })
+    db.collection('monthly_settlements').where({ month: summaryMonth }).limit(100).get(),
+    db.collection('activity_records').where({ month: summaryMonth }).limit(100).get()
   ])
 
   const currentMonth = monthOffset(0)
   const membersByKey = new Map(allMembersResult.data.map(member => [member.legacyMemberKey || member._id, member]))
   const linkedUsersByMemberId = new Map(linkedUsersResult.data.filter(linkedUser => linkedUser.historicalMemberId).map(linkedUser => [linkedUser.historicalMemberId, linkedUser]))
   const memberIdsNeedingDerivation = new Set(summaryRecordsResult.data.filter(record => isNumber(record.fundAmount)).map(record => record.legacyMemberKey))
+  const approvedActivitiesByMemberId = new Map(monthActivitiesResult.data.filter(record => record.reviewStatus === 'approved' && isNumber(record.adminApprovedEquivalentKm === undefined ? record.memberConfirmedEquivalentKm : record.adminApprovedEquivalentKm)).map(record => [record.historicalMemberId, record]))
+  approvedActivitiesByMemberId.forEach((_, memberId) => memberIdsNeedingDerivation.add(memberId))
   memberIdsNeedingDerivation.add(user.historicalMemberId)
   const histories = new Map([[user.historicalMemberId, ownRecordsResult.data]])
   await Promise.all([...memberIdsNeedingDerivation].filter(memberId => memberId !== user.historicalMemberId).map(async memberId => {
@@ -237,8 +239,10 @@ exports.main = async (event = {}) => {
   const memberRow = rawRecord => {
     let record = derivedByRecordKey.get(rawRecord.legacyRecordKey) || { ...rawRecord, calculatedKm: rawRecord.equivalentKm, actualSource: 'recorded' }
     const settlement = settlementsByMemberId.get(record.legacyMemberKey)
-    if (settlement && settlement.status === 'fund_paid') record = { ...record, calculatedKm: 0, fundAmount: settlement.fundDue, actualSource: 'admin_fund' }
+    if (settlement && settlement.status === 'fund_paid') record = { ...record, calculatedKm: isNumber(settlement.equivalentKm) ? settlement.equivalentKm : 0, fundAmount: settlement.fundDue, actualSource: 'admin_fund' }
     if (settlement && settlement.status === 'leave') record = { ...record, calculatedKm: null, adminDisposition: 'leave', actualSource: 'admin_leave' }
+    const approvedActivity = approvedActivitiesByMemberId.get(record.legacyMemberKey)
+    if (!settlement && approvedActivity) record = { ...record, calculatedKm: round(approvedActivity.adminApprovedEquivalentKm === undefined ? approvedActivity.memberConfirmedEquivalentKm : approvedActivity.adminApprovedEquivalentKm), actualSource: 'approved_activity', activityApproved: true }
     const member = membersByKey.get(record.legacyMemberKey)
     const linkedUser = linkedUsersByMemberId.get(record.legacyMemberKey)
     const targetKm = isNumber(record.targetKm) ? round(record.targetKm) : null
@@ -246,6 +250,10 @@ exports.main = async (event = {}) => {
     const completionPct = targetKm ? Math.round((actualKm || 0) / targetKm * 100) : 0
     const tone = completionTone(completionPct)
     const actual = actualDescription(record)
+    const hasUnpaidShortfall = targetKm !== null && actualKm !== null && actualKm < targetKm && !isNumber(record.fundAmount) && record.adminDisposition !== 'leave'
+    const failureStreak = hasUnpaidShortfall ? Math.max(1, Number(record.failureStreak || 0) + (record.activityApproved ? 1 : 0)) : 0
+    const shortfallKm = hasUnpaidShortfall ? round(targetKm - actualKm) : 0
+    const fundDue = hasUnpaidShortfall ? round(shortfallKm * 3 * failureStreak) : 0
     return {
       memberId: record.legacyMemberKey,
       alias: member ? member.alias : '未知成员',
@@ -262,6 +270,10 @@ exports.main = async (event = {}) => {
       ringStyle: `background:conic-gradient(${tone.ringColor} ${Math.min(100, completionPct)}%,#E7EDE8 0);`,
       ...tone,
       submitted: actualKm !== null,
+      shortfallKm,
+      failureStreak,
+      fundDue,
+      fundDueText: formatMoney(fundDue),
       ...actual,
       isMe: record.legacyMemberKey === user.historicalMemberId
     }
@@ -283,6 +295,7 @@ exports.main = async (event = {}) => {
   const activeActivityMemberIds = new Set(monthActivitiesResult.data.filter(record => !['cancelled', 'voided', 'recognition_failed', 'failed'].includes(record.reviewStatus)).map(record => record.historicalMemberId))
   const settledMemberIds = new Set(settlementsResult.data.map(record => record.historicalMemberId))
   const missingSubmissionCount = summaryRecordsResult.data.filter(record => isNumber(record.targetKm) && !isNumber(record.equivalentKm) && !isNumber(record.fundAmount) && !settledMemberIds.has(record.legacyMemberKey) && !activeActivityMemberIds.has(record.legacyMemberKey)).length
+  const myPendingFundPayment = ranking.find(row => row.isMe && row.fundDue > 0) || null
 
   const completionPct = totalTarget ? Math.round(totalActual / totalTarget * 100) : 0
   const summaryTone = completionTone(completionPct)
@@ -306,6 +319,7 @@ exports.main = async (event = {}) => {
     members: summaryRows,
     ranking,
     myLastMonthSubmitted: Boolean(ranking.find(row => row.isMe && row.submitted)),
+    myPendingFundPayment,
     isAdmin: ADMIN_MEMBER_IDS.has(user.historicalMemberId),
     pendingReviewCount: pendingReviewResult.data.length,
     missingSubmissionCount,
