@@ -1,6 +1,6 @@
 <view class="page">
   <view class="register-brand"><image class="register-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">DONGCHENG XIJIU</view></view><view class="title"><text>授权并认领</text><text>跑团身份</text></view>
-  <view class="intro muted">昵称与头像为必填项。系统会据此提供历史艺名匹配建议。</view>
+  <view class="intro muted">昵称与头像为必填项。系统会据此提供历史艺名匹配建议。继续前请阅读<text class="privacy-link" bindtap="goPrivacy">《隐私政策》</text>。</view>
   <view class="card form-card">
     <view class="field-label">微信昵称</view>
     <input class="input nickname-input" type="nickname" placeholder="点击后使用微信昵称填写" value="{{wechatNickname}}" data-field="wechatNickname" bindinput="input" bindnicknamereview="nicknameReview" maxlength="20" />

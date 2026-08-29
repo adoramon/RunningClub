@@ -1,7 +1,7 @@
 <view class="page">
   <view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">DONGCHENG XIJIU · REVIEW</view></view>
   <view class="title"><text>审核体验</text><text>安全入口</text></view>
-  <view class="intro muted">本入口仅展示隔离的演示跑团数据，不会读取、认领或修改真实成员的历史记录。</view>
+  <view class="intro muted">本入口仅展示隔离的演示跑团数据，不会读取、认领或修改真实成员的历史记录。继续前请阅读<text class="privacy-link" bindtap="goPrivacy">《隐私政策》</text>。</view>
   <view class="card form-card">
     <view class="field-label">微信昵称</view>
     <input class="input nickname-input" type="nickname" placeholder="点击后使用微信昵称填写" value="{{wechatNickname}}" data-field="wechatNickname" bindinput="input" bindnicknamereview="nicknameReview" maxlength="20" />

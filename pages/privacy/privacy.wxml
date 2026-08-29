@@ -1,0 +1,23 @@
+<view class="page privacy-page">
+  <view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">DONGCHENG XIJIU</view></view>
+  <view class="title">隐私政策</view>
+  <view class="muted update-time">生效日期：2026 年 8 月 29 日</view>
+  <view class="card policy-card">
+    <view class="policy-title">我们处理哪些信息</view>
+    <view class="policy-copy">为提供封闭跑团的身份认领、跑量记录、审核与历史分析服务，我们会在你主动操作时处理：</view>
+    <view class="policy-item">1. 微信昵称与头像：用于与历史艺名认领、成员展示及审核体验身份识别。</view>
+    <view class="policy-item">2. 微信身份标识：用于识别同一用户、保护艺名不被重复认领及控制功能访问。</view>
+    <view class="policy-item">3. 你主动上传的运动软件截图、运动类型和跑量：用于识别等效跑量、成员确认、管理员审核及月度历史分析。</view>
+    <view class="policy-item">4. 公积金结算、审核与操作记录：用于执行跑团规则、保留审计依据和展示历史统计。</view>
+  </view>
+  <view class="card policy-card">
+    <view class="policy-title">信息如何使用与存储</view>
+    <view class="policy-copy">数据存储在本小程序使用的腾讯云开发（CloudBase）环境中。运动截图会发送至管理员自建的 AI 识别服务，仅用于识别截图中的运动总量；管理员可在审核时查看原始截图。我们不会将上述信息用于广告营销，也不会出售个人信息。</view>
+    <view class="policy-copy">跑量、公积金及必要审核记录会作为跑团长期历史台账保存；头像可在后续更换。你可以联系管理员申请查询、更正或删除与账号有关的信息；法律、财务或跑团审计所必需保留的记录将按实际需要继续保存。</view>
+  </view>
+  <view class="card policy-card">
+    <view class="policy-title">你的选择与联系我们</view>
+    <view class="policy-copy">昵称、头像和历史艺名认领是进入正式跑团功能的必要条件；不同意则无法使用正式成员功能。审核体验入口仅展示隔离演示数据，不会访问真实成员资料。</view>
+    <view class="policy-copy">如对本政策或个人信息处理有疑问，请通过东成西就跑团联系管理员高翔或元。</view>
+  </view>
+</view>

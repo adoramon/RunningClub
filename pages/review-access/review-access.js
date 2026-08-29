@@ -7,6 +7,7 @@ Page({
     if (!event.detail.pass) wx.showToast({ title: '昵称审核未通过，请调整后重试', icon: 'none' })
   },
   chooseAvatar(event) { this.setData({ avatarPath: event.detail.avatarUrl }) },
+  goPrivacy() { wx.navigateTo({ url: '/pages/privacy/privacy' }) },
   async enter() {
     const { wechatNickname, avatarPath, accessCode } = this.data
     if (!wechatNickname.trim() || !avatarPath) return wx.showToast({ title: '请先完成昵称和头像授权', icon: 'none' })

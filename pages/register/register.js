@@ -22,6 +22,7 @@ Page({
   },
   selectAlias(e) { this.setData({ alias: e.currentTarget.dataset.alias }) },
   goReviewAccess() { wx.navigateTo({ url: '/pages/review-access/review-access' }) },
+  goPrivacy() { wx.navigateTo({ url: '/pages/privacy/privacy' }) },
   async save() {
     const { wechatNickname, alias, avatarPath } = this.data
     if (!wechatNickname.trim() || !avatarPath) return wx.showToast({ title: '请先完成昵称和头像授权', icon: 'none' })
