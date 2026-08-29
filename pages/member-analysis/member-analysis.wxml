@@ -1,7 +1,7 @@
 <view class="page">
   <view wx:if="{{profile}}">
     <view class="page-brand">
-      <view class="member-avatar"><image wx:if="{{profile.avatarFileId}}" src="{{profile.avatarFileId}}" mode="aspectFill"/><text wx:else>{{profileName.slice(0,1)}}</text></view>
+      <view class="member-avatar"><image wx:if="{{profile.avatarUrl || profile.avatarFileId}}" src="{{profile.avatarUrl || profile.avatarFileId}}" mode="aspectFill"/><text wx:else>{{profileName.slice(0,1)}}</text></view>
       <view><view class="eyebrow">{{profileName}} · 个人跑量分析</view><view wx:if="{{!profile.registered}}" class="unregistered">○ 尚未注册</view></view>
     </view>
     <view class="title">{{profileName}}的跑步节奏</view>

@@ -12,6 +12,23 @@ const formatMoney = value => Number(value || 0).toFixed(2)
 const formatTotalKm = value => Number(round(value)).toLocaleString('en-US', { maximumFractionDigits: 2 })
 const formatRatio = value => value >= 10 ? value.toFixed(1) : value.toFixed(2)
 
+// 云存储默认按文件创建者保护访问权限。不能把 cloud:// 文件 ID 直接交给其他成员的
+// 小程序客户端展示；由可信云函数换取临时链接，头像才会对跑团成员正常可见。
+async function attachTemporaryAvatarUrls(items) {
+  const fileIds = [...new Set(items.map(item => item.avatarFileId).filter(Boolean))]
+  if (!fileIds.length) return items
+  try {
+    const result = await cloud.getTempFileURL({ fileList: fileIds })
+    const urlsByFileId = new Map((result.fileList || [])
+      .filter(item => item.status === 0 && item.tempFileURL)
+      .map(item => [item.fileID, item.tempFileURL]))
+    return items.map(item => ({ ...item, avatarUrl: urlsByFileId.get(item.avatarFileId) || '' }))
+  } catch (error) {
+    console.warn('头像临时链接生成失败', error)
+    return items.map(item => ({ ...item, avatarUrl: '' }))
+  }
+}
+
 function completionTone(percent) {
   if (percent > 120) return { toneClass: 'tone-deep-green', ringColor: '#166C43' }
   if (percent >= 100) return { toneClass: 'tone-light-green', ringColor: '#65A36F' }
@@ -206,7 +223,7 @@ exports.main = async (event = {}) => {
   if (event.mode === 'lifetime') return getLifetimeStats()
   if (event.mode === 'profile') {
     const memberId = event.memberId || user.historicalMemberId
-    const profile = await getMemberProfile(memberId)
+    const [profile] = await attachTemporaryAvatarUrls([await getMemberProfile(memberId)])
     const evaluationMonth = monthOffset(-1)
     let monthlyEvaluation = null
     if (memberId === user.historicalMemberId) {
@@ -303,13 +320,13 @@ exports.main = async (event = {}) => {
 
   const totalTarget = round(summaryRows.reduce((sum, row) => sum + (row.targetKm || 0), 0))
   const totalActual = round(summaryRows.reduce((sum, row) => sum + (row.actualKm || 0), 0))
-  const ranking = summaryRows
+  const ranking = await attachTemporaryAvatarUrls(summaryRows)
   const hasOpeningBalance = ledgerResult.data.some(entry => entry.entryType === 'opening_balance')
   const fundBalance = round(ledgerResult.data.reduce((sum, entry) => sum + (isNumber(entry.amount) ? entry.amount : 0), hasOpeningBalance ? 0 : -257))
   const historicalFundLastMonth = summaryRecordsResult.data.reduce((sum, record) => sum + (isNumber(record.fundAmount) ? record.fundAmount : 0), 0)
   const ledgerFundLastMonth = ledgerResult.data.filter(entry => entry.month === summaryMonth && entry.entryType === 'member_payment').reduce((sum, entry) => sum + (isNumber(entry.amount) ? entry.amount : 0), 0)
   const fundAddedLastMonth = round(historicalFundLastMonth + ledgerFundLastMonth)
-  const profile = buildMemberProfile(memberResult.data, user, ownRecordsResult.data)
+  const [profile] = await attachTemporaryAvatarUrls([buildMemberProfile(memberResult.data, user, ownRecordsResult.data)])
   const activeActivityMemberIds = new Set(monthActivitiesResult.data.filter(record => !['cancelled', 'voided', 'recognition_failed', 'failed'].includes(record.reviewStatus)).map(record => record.historicalMemberId))
   const settledMemberIds = new Set(settlementsResult.data.map(record => record.historicalMemberId))
   const missingSubmissionCount = summaryRecordsResult.data.filter(record => isNumber(record.targetKm) && !isNumber(record.equivalentKm) && !isNumber(record.fundAmount) && !settledMemberIds.has(record.legacyMemberKey) && !activeActivityMemberIds.has(record.legacyMemberKey)).length

@@ -72,6 +72,7 @@
 
 - 团徽：`assets/images/dongcheng-xijiu-logo.png`，已用于认领、上传、分析和首页看板。
 - 微信公众平台头像候选：`assets/images/dongcheng-xijiu-logo-v2.png`，为圆形裁切场景生成，1254 × 1254、约 1.2MB；仅作为平台头像候选，尚未替换应用内既有团徽。
+- 成员微信头像存储为 CloudBase 私有 `cloud://` 文件 ID。任何跨成员展示都必须由云函数通过 `cloud.getTempFileURL` 换取短期 `avatarUrl`；不得把原始文件 ID直接作为其他成员客户端的头像链接。
 - 马拉松主视觉：`assets/images/marathon-hero.jpg`，已用于已认领用户首页的首屏。
 
 ## 8. 当前开发阶段与下一步

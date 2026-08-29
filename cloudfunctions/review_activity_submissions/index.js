@@ -6,6 +6,20 @@ const ADMIN_MEMBER_IDS = new Set(['legacy-member-001', 'legacy-member-023'])
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 
 function round(value) { return Math.round(Number(value || 0) * 100) / 100 }
+async function attachTemporaryAvatarUrls(items) {
+  const fileIds = [...new Set(items.map(item => item.avatarFileId).filter(Boolean))]
+  if (!fileIds.length) return items
+  try {
+    const result = await cloud.getTempFileURL({ fileList: fileIds })
+    const urlsByFileId = new Map((result.fileList || [])
+      .filter(item => item.status === 0 && item.tempFileURL)
+      .map(item => [item.fileID, item.tempFileURL]))
+    return items.map(item => ({ ...item, avatarUrl: urlsByFileId.get(item.avatarFileId) || '' }))
+  } catch (error) {
+    console.warn('审核头像临时链接生成失败', error)
+    return items.map(item => ({ ...item, avatarUrl: '' }))
+  }
+}
 function normalizedUnit(unit) {
   const value = String(unit || '').trim().toLowerCase()
   if (['km', '公里', '千米'].includes(value)) return 'km'
@@ -231,7 +245,12 @@ exports.main = async (event = {}) => {
     ])
     const usersById = new Map(usersResult.data.map(user => [user._id, user]))
     const membersById = new Map(membersResult.data.map(member => [member.legacyMemberKey || member._id, member]))
-    return { reviews: pending.data.map(record => publicReview(record, usersById, membersById)), missingSubmissions, pendingFundPayments }
+    const [reviews, missing, fundPayments] = await Promise.all([
+      attachTemporaryAvatarUrls(pending.data.map(record => publicReview(record, usersById, membersById))),
+      attachTemporaryAvatarUrls(missingSubmissions),
+      attachTemporaryAvatarUrls(pendingFundPayments)
+    ])
+    return { reviews, missingSubmissions: missing, pendingFundPayments: fundPayments }
   }
 
   if (action === 'approve') {
