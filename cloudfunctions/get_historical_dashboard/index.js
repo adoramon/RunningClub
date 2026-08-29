@@ -207,20 +207,21 @@ exports.main = async (event = {}) => {
   if (event.mode === 'profile') {
     const memberId = event.memberId || user.historicalMemberId
     const profile = await getMemberProfile(memberId)
-    if (memberId !== user.historicalMemberId) return { ...profile, isMe: false, monthlyEvaluation: null }
     const evaluationMonth = monthOffset(-1)
     let monthlyEvaluation = null
-    try {
-      const savedEvaluation = (await db.collection('activity_records').doc(`activity-${user._id}-${evaluationMonth}`).get()).data.memberEvaluation
-      monthlyEvaluation = savedEvaluation ? { ...savedEvaluation, source: 'confirmed_submission' } : null
-    } catch (_) {}
+    if (memberId === user.historicalMemberId) {
+      try {
+        const savedEvaluation = (await db.collection('activity_records').doc(`activity-${user._id}-${evaluationMonth}`).get()).data.memberEvaluation
+        monthlyEvaluation = savedEvaluation ? { ...savedEvaluation, source: 'confirmed_submission' } : null
+      } catch (_) {}
+    }
     if (!monthlyEvaluation) {
       try {
-        const historicalEvaluation = (await db.collection('monthly_evaluations').doc(`evaluation-${user.historicalMemberId}-${evaluationMonth}`).get()).data
+        const historicalEvaluation = (await db.collection('monthly_evaluations').doc(`evaluation-${memberId}-${evaluationMonth}`).get()).data
         monthlyEvaluation = historicalEvaluation && historicalEvaluation.evaluation ? { ...historicalEvaluation.evaluation, source: 'historical_import' } : null
       } catch (_) {}
     }
-    return { ...profile, isMe: true, monthlyEvaluation }
+    return { ...profile, isMe: memberId === user.historicalMemberId, monthlyEvaluation }
   }
 
   const summaryMonth = monthOffset(-1)
