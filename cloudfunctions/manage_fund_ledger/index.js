@@ -36,6 +36,24 @@ function publicEntry(entry) {
   }
 }
 
+// 旧台账只有月度汇总时，不能编造成员或用途；但对于“39+30+120”这种
+// 明确保留在原单元格中的加法公式，可如实拆成无归属的原始缴入项，方便公示查阅。
+function historicalIncomeDetails(entry) {
+  const raw = entry.source && entry.source.raw
+  if (entry.entryType !== 'legacy_monthly_income' || typeof raw !== 'string') return []
+  const expression = raw.replace(/\s/g, '')
+  if (!/^=\d+(?:\.\d+)?(?:\+\d+(?:\.\d+)?)+$/.test(expression)) return []
+  const values = expression.slice(1).split('+').map(Number)
+  if (roundMoney(values.reduce((sum, value) => sum + value, 0)) !== roundMoney(entry.amount)) return []
+  return values.map((value, index) => ({
+    entryId: `${entry._id}-detail-${index + 1}`,
+    month: entry.month || '', dateLabel: entry.month || '历史记录', entryType: 'legacy_income_detail',
+    typeLabel: '历史缴入明细', amount: value, amountText: `+${value.toFixed(2)}`, direction: 'income',
+    purpose: `原始台账拆分项 ${index + 1}${entry.source.cell ? `（${entry.source.cell}）` : ''}`,
+    operatorAlias: ''
+  }))
+}
+
 async function confirmedEntries(source = db) {
   const result = await source.collection('fund_ledger').where({ status: 'confirmed' }).limit(100).get()
   return result.data
@@ -89,7 +107,10 @@ function buildMonthlyYears(entries) {
 async function listLedger(user) {
   const entries = await confirmedEntries()
   const summary = summarize(entries)
-  const items = entries.map(publicEntry).sort((a, b) => String(b.month).localeCompare(String(a.month)) || b.entryId.localeCompare(a.entryId))
+  const items = entries.flatMap(entry => {
+    const details = historicalIncomeDetails(entry)
+    return details.length ? details : [publicEntry(entry)]
+  }).sort((a, b) => String(b.month).localeCompare(String(a.month)) || b.entryId.localeCompare(a.entryId))
   const recentMonth = [...new Set(entries.map(entry => entry.month).filter(Boolean))].sort().pop() || ''
   return {
     isAdmin: ADMIN_MEMBER_IDS.has(user.historicalMemberId), balance: summary.balance, balanceText: summary.balance.toFixed(2),
