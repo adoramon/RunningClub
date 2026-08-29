@@ -1,7 +1,7 @@
-const { getMemberHistoricalProfile } = require('../../services/cloud')
+const { getMemberHistoricalProfile, generateMonthlyEvaluation } = require('../../services/cloud')
 
 Page({
-  data: { profile: null, profileName: '', historyYears: [], average: '—', best: '—', trendHasData: false, loading: true },
+  data: { profile: null, profileName: '', historyYears: [], average: '—', best: '—', trendHasData: false, evaluationLoading: false, loading: true },
   async onLoad(options) {
     const memberId = options.memberId ? decodeURIComponent(options.memberId) : ''
     if (!memberId) {
@@ -21,10 +21,23 @@ Page({
         loading: false
       }, () => this.drawTrend(recentTrend))
       wx.setNavigationBarTitle({ title: `${profile.displayName || profile.alias}的分析` })
+      if (profile.isMe && !profile.monthlyEvaluation) this.loadMonthlyEvaluation()
     } catch (error) {
       console.error('读取成员历史失败', error)
       this.setData({ loading: false })
       wx.showToast({ title: '成员数据读取失败', icon: 'none' })
+    }
+  }
+
+  ,async loadMonthlyEvaluation() {
+    this.setData({ evaluationLoading: true })
+    try {
+      const { evaluation } = await generateMonthlyEvaluation()
+      if (evaluation) this.setData({ 'profile.monthlyEvaluation': evaluation })
+    } catch (error) {
+      console.warn('读取阶段性评价失败', error)
+    } finally {
+      this.setData({ evaluationLoading: false })
     }
   }
 

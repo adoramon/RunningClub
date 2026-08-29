@@ -1,4 +1,4 @@
-const { getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition } = require('../../services/cloud')
+const { getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, generateMonthlyEvaluation } = require('../../services/cloud')
 
 function previousMonth() {
   const date = new Date()
@@ -124,6 +124,7 @@ Page({
       const { submission } = await confirmActivitySubmission({ reviewedActivities, confirmedEquivalentKm: this.data.reviewTotalText })
       this.applySubmission(submission)
       wx.showToast({ title: '已提交，等待管理员审核', icon: 'success' })
+      generateMonthlyEvaluation().catch(error => console.warn('阶段性评价稍后生成', error))
     } catch (error) {
       console.error('确认跑量失败', error)
       wx.showToast({ title: '提交失败，请稍后重试', icon: 'none' })

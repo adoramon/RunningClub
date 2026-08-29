@@ -204,7 +204,14 @@ exports.main = async (event = {}) => {
   const user = userResult.data[0]
   if (!user || !user.historicalMemberId) throw new Error('请先完成历史艺名认领')
   if (event.mode === 'lifetime') return getLifetimeStats()
-  if (event.mode === 'profile') return getMemberProfile(event.memberId || user.historicalMemberId)
+  if (event.mode === 'profile') {
+    const memberId = event.memberId || user.historicalMemberId
+    const profile = await getMemberProfile(memberId)
+    if (memberId !== user.historicalMemberId) return { ...profile, isMe: false, monthlyEvaluation: null }
+    let monthlyEvaluation = null
+    try { monthlyEvaluation = (await db.collection('activity_records').doc(`activity-${user._id}-${monthOffset(-1)}`).get()).data.memberEvaluation || null } catch (_) {}
+    return { ...profile, isMe: true, monthlyEvaluation }
+  }
 
   const summaryMonth = monthOffset(-1)
   const [memberResult, summaryRecordsResult, allMembersResult, ownRecordsResult, linkedUsersResult, ledgerResult, pendingReviewResult, settlementsResult, monthActivitiesResult] = await Promise.all([
