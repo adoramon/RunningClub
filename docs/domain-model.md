@@ -70,9 +70,9 @@
 
 `clubId`、`month`、`entryType`、`amount`、`userId`、`settlementId`、`status`、`occurredAt`、`confirmedBy`、`note`
 
-金额采用有符号数：缴纳/补缴为正，支出/返还为负。`entryType` 包括 `opening_balance`、`member_payment`、`admin_withdrawal`、`expense`、`refund`、`adjustment`。管理员确认上月未提交成员已缴公积金时，系统会写入一条状态为 `confirmed` 的 `member_payment` 流水；该流水立即进入公积金余额。仅历史艺名“高翔”和“元”可通过云函数创建 `admin_withdrawal`；提取金额必须为正、不得超过确认后的当前余额、用途必须填写，并以负数金额、经办人和用途写入所有成员可见的公示流水。
+金额采用有符号数：缴纳/补缴为正，支出/返还为负。`entryType` 包括 `opening_balance`、`legacy_monthly_income`、`legacy_expense`、`member_payment`、`admin_withdrawal`、`expense`、`refund`、`adjustment`。管理员确认上月未提交成员已缴公积金时，系统会写入一条状态为 `confirmed` 的 `member_payment` 流水；该流水立即进入公积金余额。仅历史艺名“高翔”和“元”可通过云函数创建 `admin_withdrawal`；提取金额必须为正、不得超过确认后的当前余额、用途必须填写，并以负数金额、经办人和用途写入所有成员可见的公示流水。
 
-创建一条初始化流水：`month: 2026-07`、`entryType: opening_balance`、`amount: -257.00`、`status: confirmed`。
+历史总账的初始化采用 `2021-10` 的 `opening_balance +102.00` 元；随后导入 53 条月度缴入和 8 条历史支取/调整。累计缴入 `15,437.00` 元、累计支取 `15,796.00` 元，余额为 `-257.00` 元。旧的 `legacy-opening-2026-07` 汇总结转保留审计痕迹但标记为 `superseded`，不参与余额计算。
 
 ## 云函数边界
 

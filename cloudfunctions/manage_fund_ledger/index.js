@@ -23,6 +23,7 @@ function publicEntry(entry) {
   const amount = roundMoney(entry.amount || 0)
   const typeLabel = {
     opening_balance: '历史结转余额', member_payment: '成员缴纳公积金', admin_withdrawal: '管理员支取',
+    legacy_monthly_income: '历史月度收入', legacy_expense: '历史支取',
     expense: '跑团支出', refund: '公积金返还', adjustment: '余额调整'
   }[entry.entryType] || '公积金流水'
   const date = entry.occurredAt instanceof Date ? entry.occurredAt : null
@@ -47,13 +48,53 @@ function summarize(entries) {
   return { balance, income, withdrawal }
 }
 
+function monthLabel(month) { return month ? `${month.slice(0, 4)} 年 ${Number(month.slice(5, 7))} 月` : '历史记录' }
+
+function buildMonthlyYears(entries) {
+  const months = [...new Set(entries.map(entry => entry.month).filter(Boolean))].sort()
+  if (!months.length) return []
+  const firstMonth = months[0]
+  const lastMonth = months[months.length - 1]
+  const entriesByMonth = new Map()
+  entries.forEach(entry => {
+    if (!entry.month) return
+    const list = entriesByMonth.get(entry.month) || []
+    list.push(entry)
+    entriesByMonth.set(entry.month, list)
+  })
+  const [firstYear] = firstMonth.split('-').map(Number)
+  const [lastYear] = lastMonth.split('-').map(Number)
+  let balance = 0
+  const summaries = new Map()
+  for (let year = firstYear; year <= lastYear; year += 1) {
+    for (let month = 1; month <= 12; month += 1) {
+      const key = `${year}-${String(month).padStart(2, '0')}`
+      if (key < firstMonth || key > lastMonth) continue
+      const records = entriesByMonth.get(key) || []
+      const opening = records.filter(entry => entry.entryType === 'opening_balance').reduce((sum, entry) => sum + Number(entry.amount || 0), 0)
+      const income = records.filter(entry => entry.entryType !== 'opening_balance' && Number(entry.amount || 0) > 0).reduce((sum, entry) => sum + Number(entry.amount), 0)
+      const expense = records.filter(entry => entry.entryType !== 'opening_balance' && Number(entry.amount || 0) < 0).reduce((sum, entry) => sum + Math.abs(Number(entry.amount)), 0)
+      balance = roundMoney(balance + records.reduce((sum, entry) => sum + Number(entry.amount || 0), 0))
+      summaries.set(key, { month: key, monthNumber: month, hasData: records.length > 0, openingText: opening ? `${opening > 0 ? '+' : ''}${opening.toFixed(0)}` : '', incomeText: income ? `+${income.toFixed(0)}` : '—', expenseText: expense ? `-${expense.toFixed(0)}` : '—', balanceText: balance.toFixed(0), toneClass: balance < 0 ? 'status-deficit' : 'status-surplus' })
+    }
+  }
+  const years = []
+  for (let year = lastYear; year >= firstYear; year -= 1) {
+    const yearMonths = Array.from({ length: 12 }, (_, index) => summaries.get(`${year}-${String(index + 1).padStart(2, '0')}`) || { month: `${year}-${String(index + 1).padStart(2, '0')}`, monthNumber: index + 1, placeholder: true })
+    if (yearMonths.some(item => !item.placeholder)) years.push({ year, months: yearMonths })
+  }
+  return years
+}
+
 async function listLedger(user) {
   const entries = await confirmedEntries()
   const summary = summarize(entries)
   const items = entries.map(publicEntry).sort((a, b) => String(b.month).localeCompare(String(a.month)) || b.entryId.localeCompare(a.entryId))
+  const recentMonth = [...new Set(entries.map(entry => entry.month).filter(Boolean))].sort().pop() || ''
   return {
     isAdmin: ADMIN_MEMBER_IDS.has(user.historicalMemberId), balance: summary.balance, balanceText: summary.balance.toFixed(2),
-    incomeText: summary.income.toFixed(2), withdrawalText: summary.withdrawal.toFixed(2), entries: items
+    incomeText: summary.income.toFixed(2), withdrawalText: summary.withdrawal.toFixed(2),
+    recentMonth, recentMonthLabel: monthLabel(recentMonth), recentEntries: items.filter(item => item.month === recentMonth), monthlyYears: buildMonthlyYears(entries)
   }
 }
 
