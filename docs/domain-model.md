@@ -62,7 +62,7 @@
 
 ### monthly_settlements
 
-`clubId`、`userId`、`month`、`targetKm`、`equivalentKm`、`shortfallKm`、`isCompleted`、`failureStreak`、`fundRatePerKm`、`fundDue`、`status`、`reviewedBy`、`reviewedAt`
+`clubId`、`userId`、`historicalMemberId`、`month`、`targetKm`、`equivalentKm`、`shortfallKm`、`isCompleted`、`failureStreak`、`fundRatePerKm`、`fundDue`、`status`、`reviewedByUserId`、`reviewedByAlias`、`reviewedAt`
 
 建立唯一索引：`clubId + userId + month`。该集合由云函数写入，不允许客户端直接改写计算字段。
 
@@ -70,7 +70,7 @@
 
 `clubId`、`month`、`entryType`、`amount`、`userId`、`settlementId`、`status`、`occurredAt`、`confirmedBy`、`note`
 
-金额采用有符号数：缴纳/补缴为正，支出/返还为负。`entryType` 包括 `opening_balance`、`member_payment`、`expense`、`refund`、`adjustment`。
+金额采用有符号数：缴纳/补缴为正，支出/返还为负。`entryType` 包括 `opening_balance`、`member_payment`、`expense`、`refund`、`adjustment`。管理员确认上月未提交成员已缴公积金时，系统会写入一条状态为 `confirmed` 的 `member_payment` 流水；该流水立即进入公积金余额。
 
 创建一条初始化流水：`month: 2026-07`、`entryType: opening_balance`、`amount: -257.00`、`status: confirmed`。
 

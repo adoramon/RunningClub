@@ -3,6 +3,7 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const ADMIN_MEMBER_IDS = new Set(['legacy-member-001', 'legacy-member-023'])
+const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 
 function round(value) { return Math.round(Number(value || 0) * 100) / 100 }
 function normalizedUnit(unit) {
@@ -36,6 +37,58 @@ function activityEquivalentKm(type, value, unit) {
   if (type === 'jump_rope') return round(numeric / 100)
   if (type === 'elevation') return round(numeric * 0.02)
   return null
+}
+
+function summaryMonth() {
+  const chinaNow = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  const date = new Date(Date.UTC(chinaNow.getUTCFullYear(), chinaNow.getUTCMonth() - 1, 1))
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function previousFailureStreak(records, month) {
+  let streak = 0
+  records.filter(record => record.month < month).sort((a, b) => a.month.localeCompare(b.month)).forEach(record => {
+    if (!isNumber(record.targetKm)) { streak = 0; return }
+    if (isNumber(record.equivalentKm)) { streak = record.equivalentKm >= record.targetKm ? 0 : streak + 1; return }
+    if (isNumber(record.fundAmount)) streak += 1
+  })
+  return streak
+}
+
+function hasActiveSubmission(record) {
+  return record && !['cancelled', 'voided', 'recognition_failed', 'failed'].includes(record.reviewStatus)
+}
+
+async function findMissingSubmissions() {
+  const month = summaryMonth()
+  const [recordsResult, settlementsResult, activitiesResult, membersResult, usersResult] = await Promise.all([
+    db.collection('historical_monthly_records').where({ month }).limit(100).get(),
+    db.collection('monthly_settlements').where({ month }).limit(100).get(),
+    db.collection('activity_records').where({ month }).limit(100).get(),
+    db.collection('historical_members').limit(100).get(),
+    db.collection('users').field({ historicalMemberId: true, nickname: true, wechatNickname: true, avatarFileId: true }).limit(100).get()
+  ])
+  const settledMemberIds = new Set(settlementsResult.data.map(record => record.historicalMemberId).filter(Boolean))
+  const activeSubmissionMemberIds = new Set(activitiesResult.data.filter(hasActiveSubmission).map(record => record.historicalMemberId).filter(Boolean))
+  const membersById = new Map(membersResult.data.map(member => [member.legacyMemberKey || member._id, member]))
+  const usersByMemberId = new Map(usersResult.data.filter(user => user.historicalMemberId).map(user => [user.historicalMemberId, user]))
+  const candidates = recordsResult.data.filter(record => isNumber(record.targetKm) && !isNumber(record.equivalentKm) && !isNumber(record.fundAmount) && !settledMemberIds.has(record.legacyMemberKey) && !activeSubmissionMemberIds.has(record.legacyMemberKey))
+  return Promise.all(candidates.map(async record => {
+    const memberId = record.legacyMemberKey
+    const history = await db.collection('historical_monthly_records').where({ legacyMemberKey: memberId }).orderBy('month', 'asc').limit(100).get()
+    const priorStreak = previousFailureStreak(history.data, month)
+    const failureStreak = priorStreak + 1
+    const targetKm = round(record.targetKm)
+    const fundDue = round(targetKm * 3 * failureStreak)
+    const member = membersById.get(memberId) || {}
+    const user = usersByMemberId.get(memberId)
+    return {
+      memberId, month, targetKm, targetText: String(targetKm), shortfallKm: targetKm,
+      failureStreak, fundRatePerKm: 3 * failureStreak, fundDue, fundDueText: fundDue.toFixed(2),
+      alias: member.alias || '未知成员', displayName: user ? (user.wechatNickname || user.nickname || member.alias) : (member.alias || '未知成员'),
+      avatarFileId: user ? (user.avatarFileId || '') : '', registered: Boolean(user)
+    }
+  }))
 }
 
 async function currentAdmin() {
@@ -99,14 +152,15 @@ exports.main = async (event = {}) => {
   const records = db.collection('activity_records')
 
   if (action === 'list') {
-    const pending = await records.where({ reviewStatus: 'pending_admin_review' }).limit(100).get()
-    const [usersResult, membersResult] = await Promise.all([
+    const [pending, usersResult, membersResult, missingSubmissions] = await Promise.all([
+      records.where({ reviewStatus: 'pending_admin_review' }).limit(100).get(),
       db.collection('users').field({ _id: true, nickname: true, wechatNickname: true, avatarFileId: true }).limit(100).get(),
-      db.collection('historical_members').limit(100).get()
+      db.collection('historical_members').limit(100).get(),
+      findMissingSubmissions()
     ])
     const usersById = new Map(usersResult.data.map(user => [user._id, user]))
     const membersById = new Map(membersResult.data.map(member => [member.legacyMemberKey || member._id, member]))
-    return { reviews: pending.data.map(record => publicReview(record, usersById, membersById)) }
+    return { reviews: pending.data.map(record => publicReview(record, usersById, membersById)), missingSubmissions }
   }
 
   if (action === 'approve') {
@@ -143,6 +197,42 @@ exports.main = async (event = {}) => {
       updatedAt: db.serverDate()
     } })
     return { voided: true }
+  }
+
+  if (action === 'resolve_missing') {
+    const memberId = String(event.memberId || '')
+    const resolution = String(event.resolution || '')
+    if (!memberId || !['leave', 'fund_paid'].includes(resolution)) throw new Error('缺少有效的未提交处理方式')
+    const candidate = (await findMissingSubmissions()).find(item => item.memberId === memberId)
+    if (!candidate) throw new Error('该成员当前不在上月未提交名单中，可能已提交或已被处理')
+    const settlementId = `missing-${candidate.month}-${memberId}`
+    const operatorAlias = admin.historicalMemberId === 'legacy-member-023' ? '高翔' : '元'
+    await db.runTransaction(async transaction => {
+      const settlementRef = transaction.collection('monthly_settlements').doc(settlementId)
+      try {
+        const existing = await settlementRef.get()
+        if (existing && existing.data) throw new Error('该成员的上月未提交记录已被处理')
+      } catch (error) {
+        if (error && error.errCode !== -1 && error.errMsg !== 'document not found') throw error
+      }
+      const common = {
+        historicalMemberId: memberId, month: candidate.month, targetKm: candidate.targetKm,
+        equivalentKm: resolution === 'fund_paid' ? 0 : null, shortfallKm: resolution === 'fund_paid' ? candidate.shortfallKm : null,
+        isCompleted: false, failureStreak: resolution === 'fund_paid' ? candidate.failureStreak : candidate.failureStreak - 1,
+        fundRatePerKm: resolution === 'fund_paid' ? candidate.fundRatePerKm : 0,
+        fundDue: resolution === 'fund_paid' ? candidate.fundDue : 0,
+        status: resolution, reviewedByUserId: admin._id, reviewedByAlias: operatorAlias, reviewedAt: db.serverDate(), createdAt: db.serverDate()
+      }
+      await settlementRef.set({ data: common })
+      if (resolution === 'fund_paid') {
+        await transaction.collection('fund_ledger').doc(`member-payment-${candidate.month}-${memberId}`).set({ data: {
+          month: candidate.month, entryType: 'member_payment', amount: candidate.fundDue, status: 'confirmed',
+          historicalMemberId: memberId, settlementId, confirmedByUserId: admin._id, confirmedByAlias: operatorAlias,
+          note: `确认 ${candidate.alias} 缴纳上月未提交跑量公积金`, occurredAt: db.serverDate(), createdAt: db.serverDate()
+        } })
+      }
+    })
+    return { resolved: true, resolution, fundDue: resolution === 'fund_paid' ? candidate.fundDue : 0 }
   }
 
   throw new Error('不支持的审核操作')

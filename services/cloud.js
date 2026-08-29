@@ -54,4 +54,8 @@ function voidActivityReview({ submissionId, voidReason }) {
   return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'void', submissionId, voidReason } }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview, voidActivityReview }
+function resolveMissingSubmission({ memberId, resolution }) {
+  return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'resolve_missing', memberId, resolution } }).then(result => result.result)
+}
+
+module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission }

@@ -49,6 +49,7 @@ function deriveRecords(records) {
 }
 
 function actualDescription(record) {
+  if (record.adminDisposition === 'leave') return { actualText: '—', actualNote: '提前请假', actualNoteClass: 'status-muted' }
   if (isNumber(record.calculatedKm)) {
     if (!isNumber(record.targetKm)) return { actualText: formatKm(record.calculatedKm), actualNote: '未纳入团队统计', actualNoteClass: 'status-muted' }
     if (record.calculatedKm >= record.targetKm) return { actualText: formatKm(record.calculatedKm), actualNote: '已达成目标', actualNoteClass: 'status-completed' }
@@ -205,17 +206,19 @@ exports.main = async (event = {}) => {
   if (event.mode === 'lifetime') return getLifetimeStats()
   if (event.mode === 'profile') return getMemberProfile(event.memberId || user.historicalMemberId)
 
-  const [memberResult, summaryRecordsResult, allMembersResult, ownRecordsResult, linkedUsersResult, ledgerResult, pendingReviewResult] = await Promise.all([
+  const summaryMonth = monthOffset(-1)
+  const [memberResult, summaryRecordsResult, allMembersResult, ownRecordsResult, linkedUsersResult, ledgerResult, pendingReviewResult, settlementsResult, monthActivitiesResult] = await Promise.all([
     db.collection('historical_members').doc(user.historicalMemberId).get(),
-    db.collection('historical_monthly_records').where({ month: monthOffset(-1) }).limit(100).get(),
+    db.collection('historical_monthly_records').where({ month: summaryMonth }).limit(100).get(),
     db.collection('historical_members').limit(100).get(),
     db.collection('historical_monthly_records').where({ legacyMemberKey: user.historicalMemberId }).orderBy('month', 'desc').limit(100).get(),
     db.collection('users').field({ historicalMemberId: true, nickname: true, wechatNickname: true, avatarFileId: true }).limit(100).get(),
     db.collection('fund_ledger').where({ status: 'confirmed' }).limit(100).get(),
-    ADMIN_MEMBER_IDS.has(user.historicalMemberId) ? db.collection('activity_records').where({ reviewStatus: 'pending_admin_review' }).limit(100).get() : Promise.resolve({ data: [] })
+    ADMIN_MEMBER_IDS.has(user.historicalMemberId) ? db.collection('activity_records').where({ reviewStatus: 'pending_admin_review' }).limit(100).get() : Promise.resolve({ data: [] }),
+    ADMIN_MEMBER_IDS.has(user.historicalMemberId) ? db.collection('monthly_settlements').where({ month: summaryMonth }).limit(100).get() : Promise.resolve({ data: [] }),
+    ADMIN_MEMBER_IDS.has(user.historicalMemberId) ? db.collection('activity_records').where({ month: summaryMonth }).limit(100).get() : Promise.resolve({ data: [] })
   ])
 
-  const summaryMonth = monthOffset(-1)
   const currentMonth = monthOffset(0)
   const membersByKey = new Map(allMembersResult.data.map(member => [member.legacyMemberKey || member._id, member]))
   const linkedUsersByMemberId = new Map(linkedUsersResult.data.filter(linkedUser => linkedUser.historicalMemberId).map(linkedUser => [linkedUser.historicalMemberId, linkedUser]))
@@ -230,8 +233,12 @@ exports.main = async (event = {}) => {
   histories.forEach(history => deriveRecords(history).forEach(record => {
     derivedByRecordKey.set(record.legacyRecordKey, record)
   }))
+  const settlementsByMemberId = new Map(settlementsResult.data.map(record => [record.historicalMemberId, record]))
   const memberRow = rawRecord => {
-    const record = derivedByRecordKey.get(rawRecord.legacyRecordKey) || { ...rawRecord, calculatedKm: rawRecord.equivalentKm, actualSource: 'recorded' }
+    let record = derivedByRecordKey.get(rawRecord.legacyRecordKey) || { ...rawRecord, calculatedKm: rawRecord.equivalentKm, actualSource: 'recorded' }
+    const settlement = settlementsByMemberId.get(record.legacyMemberKey)
+    if (settlement && settlement.status === 'fund_paid') record = { ...record, calculatedKm: 0, fundAmount: settlement.fundDue, actualSource: 'admin_fund' }
+    if (settlement && settlement.status === 'leave') record = { ...record, calculatedKm: null, adminDisposition: 'leave', actualSource: 'admin_leave' }
     const member = membersByKey.get(record.legacyMemberKey)
     const linkedUser = linkedUsersByMemberId.get(record.legacyMemberKey)
     const targetKm = isNumber(record.targetKm) ? round(record.targetKm) : null
@@ -269,8 +276,13 @@ exports.main = async (event = {}) => {
   const ranking = summaryRows
   const hasOpeningBalance = ledgerResult.data.some(entry => entry.entryType === 'opening_balance')
   const fundBalance = round(ledgerResult.data.reduce((sum, entry) => sum + (isNumber(entry.amount) ? entry.amount : 0), hasOpeningBalance ? 0 : -257))
-  const fundAddedLastMonth = round(summaryRows.reduce((sum, row) => sum + row.fundAmount, 0))
+  const historicalFundLastMonth = summaryRecordsResult.data.reduce((sum, record) => sum + (isNumber(record.fundAmount) ? record.fundAmount : 0), 0)
+  const ledgerFundLastMonth = ledgerResult.data.filter(entry => entry.month === summaryMonth && entry.entryType === 'member_payment').reduce((sum, entry) => sum + (isNumber(entry.amount) ? entry.amount : 0), 0)
+  const fundAddedLastMonth = round(historicalFundLastMonth + ledgerFundLastMonth)
   const profile = buildMemberProfile(memberResult.data, user, ownRecordsResult.data)
+  const activeActivityMemberIds = new Set(monthActivitiesResult.data.filter(record => !['cancelled', 'voided', 'recognition_failed', 'failed'].includes(record.reviewStatus)).map(record => record.historicalMemberId))
+  const settledMemberIds = new Set(settlementsResult.data.map(record => record.historicalMemberId))
+  const missingSubmissionCount = summaryRecordsResult.data.filter(record => isNumber(record.targetKm) && !isNumber(record.equivalentKm) && !isNumber(record.fundAmount) && !settledMemberIds.has(record.legacyMemberKey) && !activeActivityMemberIds.has(record.legacyMemberKey)).length
 
   const completionPct = totalTarget ? Math.round(totalActual / totalTarget * 100) : 0
   const summaryTone = completionTone(completionPct)
@@ -296,6 +308,7 @@ exports.main = async (event = {}) => {
     myLastMonthSubmitted: Boolean(ranking.find(row => row.isMe && row.submitted)),
     isAdmin: ADMIN_MEMBER_IDS.has(user.historicalMemberId),
     pendingReviewCount: pendingReviewResult.data.length,
+    missingSubmissionCount,
     profile
   }
 }

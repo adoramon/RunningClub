@@ -1,4 +1,4 @@
-const { getPendingActivityReviews, approveActivityReview, voidActivityReview } = require('../../services/cloud')
+const { getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission } = require('../../services/cloud')
 
 const labels = { running: '跑步', cycling: '骑行', swimming: '游泳', jump_rope: '跳绳', elevation: '累计爬升', custom: '其他运动' }
 
@@ -44,13 +44,13 @@ function enrichReview(review) {
 }
 
 Page({
-  data: { reviews: [], loading: true, actingId: '' },
+  data: { reviews: [], missingSubmissions: [], loading: true, actingId: '' },
   onShow() { this.loadReviews() },
   async loadReviews() {
     this.setData({ loading: true })
     try {
-      const { reviews } = await getPendingActivityReviews()
-      this.setData({ reviews: (reviews || []).map(enrichReview) })
+      const { reviews, missingSubmissions } = await getPendingActivityReviews()
+      this.setData({ reviews: (reviews || []).map(enrichReview), missingSubmissions: missingSubmissions || [] })
     } catch (error) {
       console.error('读取审核队列失败', error)
       wx.showToast({ title: '读取审核队列失败', icon: 'none' })
@@ -132,6 +132,34 @@ Page({
         } catch (error) {
           console.error('作废审核失败', error)
           wx.showToast({ title: '作废失败，请稍后重试', icon: 'none' })
+        } finally {
+          this.setData({ actingId: '' })
+        }
+      }
+    })
+  },
+  resolveMissing(event) {
+    const { id, resolution } = event.currentTarget.dataset
+    const member = this.data.missingSubmissions.find(item => item.memberId === id)
+    if (!member) return
+    const isFund = resolution === 'fund_paid'
+    wx.showModal({
+      title: isFund ? '确认已缴纳公积金？' : '设为上月请假？',
+      content: isFund
+        ? `${member.displayName} 上月承诺 ${member.targetText} km，连续未达标第 ${member.failureStreak} 月，应缴 ¥${member.fundDueText}。确认到账后将计入跑团公积金。`
+        : `将 ${member.displayName} 标记为 ${member.month} 提前请假，不计入本次公积金。`,
+      confirmText: isFund ? '确认已缴 ¥' + member.fundDueText : '确认请假',
+      confirmColor: isFund ? '#1F6F54' : '#A96E27',
+      success: async result => {
+        if (!result.confirm) return
+        this.setData({ actingId: id })
+        try {
+          await resolveMissingSubmission({ memberId: id, resolution })
+          wx.showToast({ title: isFund ? '已计入公积金' : '已设为上月请假', icon: 'success' })
+          this.loadReviews()
+        } catch (error) {
+          console.error('处理未提交跑量失败', error)
+          wx.showToast({ title: error.message || '处理失败，请稍后重试', icon: 'none' })
         } finally {
           this.setData({ actingId: '' })
         }
