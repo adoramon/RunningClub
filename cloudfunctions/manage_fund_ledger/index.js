@@ -5,6 +5,7 @@ const db = cloud.database()
 const ADMIN_MEMBER_IDS = new Set(['legacy-member-001', 'legacy-member-023'])
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 const roundMoney = value => Math.round(Number(value) * 100) / 100
+const formatMoney = value => Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
 function currentMonth() {
   const chinaNow = new Date(Date.now() + 8 * 60 * 60 * 1000)
@@ -19,20 +20,27 @@ async function currentUser() {
   return user
 }
 
-function publicEntry(entry) {
+function publicEntry(entry, displayNames = new Map()) {
   const amount = roundMoney(entry.amount || 0)
-  const typeLabel = {
+  let typeLabel = {
     opening_balance: '历史结转余额', member_payment: '成员缴纳公积金', admin_withdrawal: '管理员支取',
     legacy_monthly_income: '历史月度收入', legacy_expense: '历史支取',
     expense: '跑团支出', refund: '公积金返还', adjustment: '余额调整'
   }[entry.entryType] || '公积金流水'
   const date = entry.occurredAt instanceof Date ? entry.occurredAt : null
+  let purpose = entry.purpose || entry.note || '—'
+  let operatorAlias = entry.withdrawnByAlias || entry.confirmedByAlias || ''
+  if (entry.entryType === 'member_payment') {
+    typeLabel = '缴纳公积金'
+    purpose = `${displayNames.get(entry.historicalMemberId) || '成员'}缴纳`
+    operatorAlias = ''
+  }
   return {
     entryId: entry._id, month: entry.month || '',
     dateLabel: date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : (entry.month || '历史记录'),
-    entryType: entry.entryType, typeLabel, amount, amountText: `${amount > 0 ? '+' : ''}${amount.toFixed(2)}`,
+    entryType: entry.entryType, typeLabel, amount, amountText: `${amount > 0 ? '+' : ''}${formatMoney(amount)}`,
     direction: amount > 0 ? 'income' : amount < 0 ? 'expense' : 'neutral',
-    purpose: entry.purpose || entry.note || '—', operatorAlias: entry.withdrawnByAlias || entry.confirmedByAlias || ''
+    purpose, operatorAlias
   }
 }
 
@@ -48,7 +56,7 @@ function historicalIncomeDetails(entry) {
   return values.map((value, index) => ({
     entryId: `${entry._id}-detail-${index + 1}`,
     month: entry.month || '', dateLabel: entry.month || '历史记录', entryType: 'legacy_income_detail',
-    typeLabel: '历史缴入明细', amount: value, amountText: `+${value.toFixed(2)}`, direction: 'income',
+    typeLabel: '历史缴入明细', amount: value, amountText: `+${formatMoney(value)}`, direction: 'income',
     purpose: `原始台账拆分项 ${index + 1}${entry.source.cell ? `（${entry.source.cell}）` : ''}`,
     operatorAlias: ''
   }))
@@ -57,6 +65,18 @@ function historicalIncomeDetails(entry) {
 async function confirmedEntries(source = db) {
   const result = await source.collection('fund_ledger').where({ status: 'confirmed' }).limit(100).get()
   return result.data
+}
+
+async function memberDisplayNames() {
+  const [membersResult, usersResult] = await Promise.all([
+    db.collection('historical_members').field({ alias: true }).limit(100).get(),
+    db.collection('users').field({ historicalMemberId: true, nickname: true }).limit(100).get()
+  ])
+  const names = new Map(membersResult.data.map(member => [member._id, member.alias]))
+  usersResult.data.forEach(user => {
+    if (user.historicalMemberId && user.nickname) names.set(user.historicalMemberId, user.nickname)
+  })
+  return names
 }
 
 function summarize(entries) {
@@ -93,7 +113,7 @@ function buildMonthlyYears(entries) {
       const income = records.filter(entry => entry.entryType !== 'opening_balance' && Number(entry.amount || 0) > 0).reduce((sum, entry) => sum + Number(entry.amount), 0)
       const expense = records.filter(entry => entry.entryType !== 'opening_balance' && Number(entry.amount || 0) < 0).reduce((sum, entry) => sum + Math.abs(Number(entry.amount)), 0)
       balance = roundMoney(balance + records.reduce((sum, entry) => sum + Number(entry.amount || 0), 0))
-      summaries.set(key, { month: key, monthNumber: month, hasData: records.length > 0, openingText: opening ? `${opening > 0 ? '+' : ''}${opening.toFixed(0)}` : '', incomeText: income ? `+${income.toFixed(0)}` : '—', expenseText: expense ? `-${expense.toFixed(0)}` : '—', balanceText: balance.toFixed(0), toneClass: balance < 0 ? 'status-deficit' : 'status-surplus' })
+      summaries.set(key, { month: key, monthNumber: month, hasData: records.length > 0, openingText: opening ? `${opening > 0 ? '+' : ''}${formatMoney(opening)}` : '', incomeText: income ? `+${formatMoney(income)}` : '—', expenseText: expense ? `-${formatMoney(expense)}` : '—', balanceText: formatMoney(balance), toneClass: balance < 0 ? 'status-deficit' : 'status-surplus' })
     }
   }
   const years = []
@@ -105,16 +125,16 @@ function buildMonthlyYears(entries) {
 }
 
 async function listLedger(user) {
-  const entries = await confirmedEntries()
+  const [entries, displayNames] = await Promise.all([confirmedEntries(), memberDisplayNames()])
   const summary = summarize(entries)
   const items = entries.flatMap(entry => {
     const details = historicalIncomeDetails(entry)
-    return details.length ? details : [publicEntry(entry)]
+    return details.length ? details : [publicEntry(entry, displayNames)]
   }).sort((a, b) => String(b.month).localeCompare(String(a.month)) || b.entryId.localeCompare(a.entryId))
   const recentMonth = [...new Set(entries.map(entry => entry.month).filter(Boolean))].sort().pop() || ''
   return {
-    isAdmin: ADMIN_MEMBER_IDS.has(user.historicalMemberId), balance: summary.balance, balanceText: summary.balance.toFixed(2),
-    incomeText: summary.income.toFixed(2), withdrawalText: summary.withdrawal.toFixed(2),
+    isAdmin: ADMIN_MEMBER_IDS.has(user.historicalMemberId), balance: summary.balance, balanceText: formatMoney(summary.balance),
+    incomeText: formatMoney(summary.income), withdrawalText: formatMoney(summary.withdrawal),
     recentMonth, recentMonthLabel: monthLabel(recentMonth), recentEntries: items.filter(item => item.month === recentMonth), monthlyYears: buildMonthlyYears(entries)
   }
 }
