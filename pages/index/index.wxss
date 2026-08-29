@@ -46,6 +46,7 @@
 .fund-amount { margin-top:8rpx; color:#C64D45; font-size:40rpx; font-weight:800; }
 .fund-added { margin-top:8rpx; color:#1F6F54; font-size:34rpx; font-weight:800; }
 .fund-amount text,.fund-added text { font-size:20rpx; font-weight:500; }
+.fund-entry { display:flex; align-items:center; justify-content:space-between; margin-top:-2rpx; padding:18rpx 24rpx; border-radius:0 0 18rpx 18rpx; background:#EDF5EF; color:#397257; font-size:22rpx; font-weight:800; }.fund-entry text:last-child { color:#6A9D7B; font-size:20rpx; }
 .fund-divider { width:1rpx; height:68rpx; background:#E8EAE5; }
 .admin-review-alert { display:flex; align-items:center; margin-top:20rpx; padding:24rpx 26rpx; border-radius:20rpx; background:#1D5C45; color:#FFF; box-shadow:0 10rpx 24rpx rgba(26,82,61,.14); }
 .admin-review-badge { display:flex; align-items:center; justify-content:center; width:56rpx; height:56rpx; border-radius:50%; background:#A9E7B9; color:#13563B; font-size:28rpx; font-weight:900; }

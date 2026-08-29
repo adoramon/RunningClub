@@ -4,6 +4,7 @@
     "pages/register/register",
     "pages/review-access/review-access",
     "pages/privacy/privacy",
+    "pages/fund-ledger/fund-ledger",
     "pages/upload/upload",
     "pages/review/review",
     "pages/analysis/analysis",

@@ -17,11 +17,12 @@
     </view>
   </view>
 
-  <view class="card fund-card">
+  <view class="card fund-card" bindtap="goFundLedger">
     <view><view class="fund-label">公积金当前余额</view><view class="fund-amount">{{dashboard.fundBalanceText}} <text>元</text></view></view>
     <view class="fund-divider"></view>
     <view><view class="fund-label">上月新增公积金</view><view class="fund-added">+{{dashboard.fundAddedLastMonthText}} <text>元</text></view></view>
   </view>
+  <view wx:if="{{!dashboard.isReviewDemo}}" class="fund-entry" bindtap="goFundLedger"><text>公积金收支公示</text><text>查看明细 →</text></view>
 
   <view wx:if="{{dashboard.isAdmin && (dashboard.pendingReviewCount || dashboard.missingSubmissionCount)}}" class="admin-review-alert" bindtap="goReview"><view class="admin-review-badge">审</view><view class="admin-review-copy"><view wx:if="{{dashboard.pendingReviewCount}}">有 {{dashboard.pendingReviewCount}} 条跑量等待审核</view><view wx:if="{{dashboard.missingSubmissionCount}}">有 {{dashboard.missingSubmissionCount}} 人上月尚未提交</view><view>可核验截图、请假或确认缴纳公积金</view></view><view class="admin-review-action">去管理 →</view></view>
 

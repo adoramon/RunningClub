@@ -46,5 +46,6 @@ Page({
     wx.navigateTo({ url: `/pages/member-analysis/member-analysis?memberId=${encodeURIComponent(memberId)}` })
   },
   goUpload() { wx.navigateTo({ url: '/pages/upload/upload' }) },
+  goFundLedger() { wx.navigateTo({ url: '/pages/fund-ledger/fund-ledger' }) },
   goReview() { wx.navigateTo({ url: '/pages/review/review' }) }
 })

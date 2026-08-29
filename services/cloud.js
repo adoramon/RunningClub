@@ -70,4 +70,12 @@ function generateMonthlyEvaluation() {
   return wx.cloud.callFunction({ name: 'generate_monthly_evaluation' }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, claimReviewAccess, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission, confirmPendingFundPayment, generateMonthlyEvaluation }
+function getFundLedger() {
+  return wx.cloud.callFunction({ name: 'manage_fund_ledger', data: { action: 'list' } }).then(result => result.result)
+}
+
+function withdrawFund({ amount, purpose }) {
+  return wx.cloud.callFunction({ name: 'manage_fund_ledger', data: { action: 'withdraw', amount, purpose } }).then(result => result.result)
+}
+
+module.exports = { getCurrentUser, claimHistoricalIdentity, claimReviewAccess, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission, confirmPendingFundPayment, generateMonthlyEvaluation, getFundLedger, withdrawFund }
