@@ -208,8 +208,18 @@ exports.main = async (event = {}) => {
     const memberId = event.memberId || user.historicalMemberId
     const profile = await getMemberProfile(memberId)
     if (memberId !== user.historicalMemberId) return { ...profile, isMe: false, monthlyEvaluation: null }
+    const evaluationMonth = monthOffset(-1)
     let monthlyEvaluation = null
-    try { monthlyEvaluation = (await db.collection('activity_records').doc(`activity-${user._id}-${monthOffset(-1)}`).get()).data.memberEvaluation || null } catch (_) {}
+    try {
+      const savedEvaluation = (await db.collection('activity_records').doc(`activity-${user._id}-${evaluationMonth}`).get()).data.memberEvaluation
+      monthlyEvaluation = savedEvaluation ? { ...savedEvaluation, source: 'confirmed_submission' } : null
+    } catch (_) {}
+    if (!monthlyEvaluation) {
+      try {
+        const historicalEvaluation = (await db.collection('monthly_evaluations').doc(`evaluation-${user.historicalMemberId}-${evaluationMonth}`).get()).data
+        monthlyEvaluation = historicalEvaluation && historicalEvaluation.evaluation ? { ...historicalEvaluation.evaluation, source: 'historical_import' } : null
+      } catch (_) {}
+    }
     return { ...profile, isMe: true, monthlyEvaluation }
   }
 
