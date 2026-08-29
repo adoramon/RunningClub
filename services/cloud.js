@@ -46,8 +46,12 @@ function getPendingActivityReviews() {
   return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'list' } }).then(result => result.result)
 }
 
-function approveActivityReview(submissionId) {
-  return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'approve', submissionId } }).then(result => result.result)
+function approveActivityReview({ submissionId, reviewedActivities }) {
+  return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'approve', submissionId, reviewedActivities } }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview }
+function voidActivityReview({ submissionId, voidReason }) {
+  return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'void', submissionId, voidReason } }).then(result => result.result)
+}
+
+module.exports = { getCurrentUser, claimHistoricalIdentity, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, getPendingActivityReviews, approveActivityReview, voidActivityReview }

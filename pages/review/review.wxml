@@ -1,17 +1,20 @@
 <view class="page">
   <view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">ADMIN REVIEW</view></view>
   <view class="title"><text>跑量审核</text><text>队列</text></view>
-  <view class="tip"><text>●</text> 高翔或元任一人通过后，跑量即成为已审核记录。</view>
+  <view class="tip"><text>●</text> 可点开原始截图核对，逐项调整后按管理员核定数据保存。</view>
 
   <view wx:if="{{loading}}" class="empty-state"><view class="muted">正在读取待审核记录…</view></view>
   <view wx:elif="{{!reviews.length}}" class="empty-state"><view class="empty-icon">✓</view><view class="empty-title">当前没有待审核跑量</view><view class="muted">新提交的成员跑量会出现在这里。</view></view>
   <view wx:else>
     <view class="queue-count">待审核 {{reviews.length}} 条</view>
     <view wx:for="{{reviews}}" wx:key="submissionId" class="card review-card">
-      <view class="member-head"><view class="avatar"><image wx:if="{{item.avatarFileId}}" src="{{item.avatarFileId}}" mode="aspectFill"/><text wx:else>{{item.memberName.slice(0,1)}}</text></view><view class="member-copy"><view>{{item.memberName}} <text wx:if="{{item.memberAlias && item.memberAlias !== item.memberName}}">· {{item.memberAlias}}</text></view><view>{{item.month}} · 成员已确认</view></view><view class="confirmed-km">{{item.confirmedEquivalentKm}}<text> km</text></view></view>
-      <view wx:if="{{item.evidenceFiles.length}}" class="proof-strip"><image wx:for="{{item.evidenceFiles}}" wx:key="fileId" class="proof-thumbnail" src="{{item.fileId}}" mode="aspectFill"/></view>
-      <view wx:for="{{item.activities}}" wx:key="index" class="activity-row"><view><view class="activity-name">{{item.label}} <text>· 截图 {{item.evidenceImageIndex}}</text></view><view class="activity-evidence">{{item.evidence || '无文字依据'}}</view></view><view class="activity-value">{{item.rawValue}} {{item.rawUnit}}<view>等效 {{item.equivalentText}} km</view></view></view>
-      <button class="primary-btn approve-btn" loading="{{approvingId === item.submissionId}}" data-id="{{item.submissionId}}" bindtap="approve">通过并计入上月跑量</button>
+      <view class="member-head"><view class="avatar"><image wx:if="{{item.avatarFileId}}" src="{{item.avatarFileId}}" mode="aspectFill"/><text wx:else>{{item.memberName.slice(0,1)}}</text></view><view class="member-copy"><view>{{item.memberName}} <text wx:if="{{item.memberAlias && item.memberAlias !== item.memberName}}">· {{item.memberAlias}}</text></view><view>{{item.month}} · 成员已确认</view></view><view class="confirmed-km">{{item.adminTotalText}}<text> km</text></view></view>
+      <view wx:if="{{item.evidenceFiles.length}}" class="proof-strip"><image wx:for="{{item.evidenceFiles}}" wx:key="fileId" class="proof-thumbnail" src="{{item.fileId}}" mode="aspectFill" data-id="{{item.submissionId}}" data-file-id="{{item.fileId}}" bindtap="previewEvidence"/></view>
+      <view class="proof-hint">点击截图可查看原图</view>
+      <view wx:for="{{item.activities}}" wx:key="activityIndex" class="activity-row {{item.included ? '' : 'excluded'}}"><view class="activity-main"><view class="activity-name">{{item.label}} <text>· 截图 {{item.evidenceImageIndex}}</text></view><view class="activity-evidence">{{item.evidence || '无文字依据'}}</view><view class="raw-editor"><input type="digit" value="{{item.rawValueText}}" data-id="{{item.submissionId}}" data-index="{{item.activityIndex}}" bindinput="inputActivityValue"/><text>{{item.rawUnit}}</text></view></view><view class="activity-side"><view class="activity-equivalent">{{item.reviewEquivalentText}}<text> km</text></view><button class="activity-toggle {{item.included ? '' : 'is-excluded'}}" disabled="{{item.invalidUnit}}" data-id="{{item.submissionId}}" data-index="{{item.activityIndex}}" bindtap="toggleActivity">{{item.invalidUnit ? '单位异常' : (item.included ? '已计入' : '不计入')}}</button></view></view>
+      <view class="admin-total"><text>管理员核定</text><view>{{item.adminTotalText}}<text> km</text></view></view>
+      <view class="void-area"><input maxlength="160" placeholder="不符合要求时，填写作废原因（成员可见）" value="{{item.voidReason}}" data-id="{{item.submissionId}}" bindinput="inputVoidReason"/></view>
+      <view class="action-row"><button class="void-btn" loading="{{actingId === item.submissionId}}" data-id="{{item.submissionId}}" bindtap="voidReview">作废本次提交</button><button class="primary-btn approve-btn" loading="{{actingId === item.submissionId}}" data-id="{{item.submissionId}}" bindtap="approve">通过并保存</button></view>
     </view>
   </view>
 </view>

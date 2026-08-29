@@ -54,7 +54,7 @@
 
 ### activity_records
 
-`_id`、`clubId`、`userId`、`historicalMemberId`、`month`、`activityType`、`rawValue`、`rawUnit`、`equivalentKm`、`evidenceFileIds`、`evidenceFileId`、`previousEvidenceFileIds`、`recognitionStatus`、`recognition`、`memberConfirmedEquivalentKm`、`memberReviewedActivities`、`adminReviewedByUserId`、`adminReviewedByAlias`、`adminReviewedAt`、`revision`、`submittedAt`、`reviewStatus`
+`_id`、`clubId`、`userId`、`historicalMemberId`、`month`、`activityType`、`rawValue`、`rawUnit`、`equivalentKm`、`evidenceFileIds`、`evidenceFileId`、`previousEvidenceFileIds`、`recognitionStatus`、`recognition`、`memberConfirmedEquivalentKm`、`memberReviewedActivities`、`adminReviewedActivities`、`adminApprovedEquivalentKm`、`adminReviewedByUserId`、`adminReviewedByAlias`、`adminReviewedAt`、`adminVoidedByUserId`、`adminVoidedByAlias`、`adminVoidedAt`、`adminVoidReason`、`revision`、`submittedAt`、`reviewStatus`
 
 `activityType` 为 `running`、`cycling`、`swimming`、`jump_rope`、`elevation` 或 `custom`。`custom` 必须由管理员审核并记录换算系数。
 

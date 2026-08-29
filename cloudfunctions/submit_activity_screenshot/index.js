@@ -217,6 +217,7 @@ function publicSubmission(record) {
     evidenceCount: (record.evidenceFileIds || []).length,
     recognitionStatus: record.recognitionStatus,
     reviewStatus: record.reviewStatus,
+    adminVoidReason: record.adminVoidReason || '',
     memberConfirmedEquivalentKm: record.memberConfirmedEquivalentKm,
     memberReviewedActivities: record.memberReviewedActivities || [],
     recognition: {

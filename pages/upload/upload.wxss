@@ -55,3 +55,4 @@
 .status-copy { margin-top:7rpx; color:#66796C; font-size:21rpx; line-height:1.5; }
 .error-hint { margin-top:20rpx; color:#B24F35; font-size:22rpx; line-height:1.5; }
 .cancelled-hint { margin-top:20rpx; color:#8A753C; font-size:22rpx; line-height:1.5; }
+.voided-hint { margin-top:20rpx; padding:16rpx; border-radius:12rpx; background:#FFF1EE; color:#A64A3A; font-size:22rpx; line-height:1.5; }
