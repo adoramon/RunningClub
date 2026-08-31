@@ -44,6 +44,28 @@ function enrichReview(review) {
   return { ...review, activities, evidenceFiles, adminTotalText: total.toFixed(2), voidReason: '' }
 }
 
+async function resolveEvidenceUrls(reviews) {
+  const fileIds = [...new Set(reviews.flatMap(review =>
+    (review.evidenceFiles || []).filter(item => !item.tempUrl && item.fileId).map(item => item.fileId)
+  ))]
+  if (!fileIds.length) return reviews
+  try {
+    const result = await wx.cloud.getTempFileURL({ fileList: fileIds })
+    const urlsByFileId = new Map((result.fileList || [])
+      .filter(item => Number(item.status) === 0 && item.tempFileURL)
+      .map(item => [item.fileID || item.fileId, item.tempFileURL]))
+    return reviews.map(review => ({
+      ...review,
+      evidenceFiles: (review.evidenceFiles || []).map(item => ({
+        ...item, tempUrl: item.tempUrl || urlsByFileId.get(item.fileId) || ''
+      }))
+    }))
+  } catch (error) {
+    console.warn('客户端截图临时链接生成失败', error)
+    return reviews
+  }
+}
+
 Page({
   data: { reviews: [], missingSubmissions: [], pendingFundPayments: [], loading: true, actingId: '' },
   onShow() { this.loadReviews() },
@@ -51,7 +73,8 @@ Page({
     this.setData({ loading: true })
     try {
       const result = await getPendingActivityReviews()
-      this.setData({ reviews: (result.reviews || []).map(enrichReview), missingSubmissions: result.missingSubmissions || [], pendingFundPayments: result.pendingFundPayments || [] })
+      const reviews = await resolveEvidenceUrls((result.reviews || []).map(enrichReview))
+      this.setData({ reviews, missingSubmissions: result.missingSubmissions || [], pendingFundPayments: result.pendingFundPayments || [] })
       return result
     } catch (error) {
       console.error('读取审核队列失败', error)
@@ -79,15 +102,31 @@ Page({
     const voidReason = event.detail.value
     this.updateReview(id, review => ({ ...review, voidReason }))
   },
-  previewEvidence(event) {
-    const { id, url } = event.currentTarget.dataset
+  async previewEvidence(event) {
+    const { id, url, fileId } = event.currentTarget.dataset
     const review = this.data.reviews.find(item => item.submissionId === id)
     const urls = review ? review.evidenceFiles.map(item => item.tempUrl).filter(Boolean) : []
-    if (!url || !urls.length) {
-      wx.showToast({ title: '截图链接暂不可用，请刷新后重试', icon: 'none' })
+    if (url && urls.length) {
+      wx.previewImage({ current: url, urls })
       return
     }
-    wx.previewImage({ current: url, urls })
+    const fileIds = review ? review.evidenceFiles.map(item => item.fileId).filter(Boolean) : [fileId].filter(Boolean)
+    if (!fileIds.length) {
+      wx.showToast({ title: '未找到原始截图', icon: 'none' })
+      return
+    }
+    wx.showLoading({ title: '正在加载原图' })
+    try {
+      const downloads = await Promise.all(fileIds.map(fileID => wx.cloud.downloadFile({ fileID })))
+      const localPaths = downloads.map(item => item.tempFilePath).filter(Boolean)
+      if (!localPaths.length) throw new Error('下载截图失败')
+      wx.previewImage({ current: localPaths[0], urls: localPaths })
+    } catch (error) {
+      console.error('下载审核截图失败', error)
+      wx.showToast({ title: '原图暂不可访问，请稍后重试', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
   },
   approve(event) {
     const submissionId = event.currentTarget.dataset.id

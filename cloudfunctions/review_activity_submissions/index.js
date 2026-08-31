@@ -12,8 +12,8 @@ async function attachTemporaryAvatarUrls(items) {
   try {
     const result = await cloud.getTempFileURL({ fileList: fileIds })
     const urlsByFileId = new Map((result.fileList || [])
-      .filter(item => item.status === 0 && item.tempFileURL)
-      .map(item => [item.fileID, item.tempFileURL]))
+      .filter(item => Number(item.status) === 0 && item.tempFileURL)
+      .map(item => [item.fileID || item.fileId, item.tempFileURL]))
     return items.map(item => ({ ...item, avatarUrl: urlsByFileId.get(item.avatarFileId) || '' }))
   } catch (error) {
     console.warn('审核头像临时链接生成失败', error)
@@ -26,13 +26,13 @@ async function attachTemporaryEvidenceUrls(items) {
   try {
     const result = await cloud.getTempFileURL({ fileList: fileIds })
     const urlsByFileId = new Map((result.fileList || [])
-      .filter(item => item.status === 0 && item.tempFileURL)
-      .map(item => [item.fileID, item.tempFileURL]))
+      .filter(item => Number(item.status) === 0 && item.tempFileURL)
+      .map(item => [item.fileID || item.fileId, item.tempFileURL]))
     return items.map(item => ({
       ...item,
       evidenceFiles: (item.evidenceFileIds || []).map((fileId, index) => ({
         fileId, index: index + 1, tempUrl: urlsByFileId.get(fileId) || ''
-      })).filter(item => item.tempUrl)
+      }))
     }))
   } catch (error) {
     console.warn('审核截图临时链接生成失败', error)
