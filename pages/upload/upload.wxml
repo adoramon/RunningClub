@@ -3,7 +3,7 @@
   <view class="title"><text>提交上月</text><text>运动记录</text></view>
   <view class="tip"><text>●</text> 上传运动软件月度截图，系统将识别并换算等效跑量。</view>
 
-  <view class="card form-card" wx:if="{{!submission || submission.reviewStatus === 'recognition_failed' || submission.reviewStatus === 'cancelled' || submission.reviewStatus === 'voided'}}">
+  <view class="card form-card" wx:if="{{!submission || submission.reviewStatus === 'recognition_failed' || submission.reviewStatus === 'cancelled' || submission.reviewStatus === 'withdrawn' || submission.reviewStatus === 'voided'}}">
     <view class="field-label">上月运动记录截图 <text class="image-count">{{images.length}} / 3 张</text></view>
     <view class="image-picker {{images.length ? 'has-images' : ''}}" bindtap="chooseImages">
       <view wx:if="{{images.length}}" class="image-grid"><image wx:for="{{images}}" wx:key="path" src="{{item.path}}" mode="aspectFill"/></view>
@@ -25,8 +25,9 @@
     <view class="result-actions"><button class="cancel-btn" disabled="{{loading}}" bindtap="cancelRecognition">取消本次识别</button><button class="primary-btn submit confirm-btn" loading="{{loading}}" bindtap="confirm">确认并提交审核</button></view>
   </view>
 
-  <view wx:if="{{submission && submission.reviewStatus === 'pending_admin_review'}}" class="card status-card"><view class="status-icon">✓</view><view><view class="status-title">已提交管理员审核</view><view class="status-copy">本次确认计入 {{submission.memberConfirmedEquivalentKm}} km。审核通过后才会进入月度结算。</view></view></view>
+  <view wx:if="{{submission && submission.reviewStatus === 'pending_admin_review'}}" class="card status-card"><view class="status-main"><view class="status-icon">✓</view><view><view class="status-title">已提交管理员审核</view><view class="status-copy">本次确认计入 {{submission.memberConfirmedEquivalentKm}} km。审核通过后才会进入月度结算。</view></view></view><button class="withdraw-submission-btn" loading="{{loading}}" bindtap="withdrawSubmission">作废本次提交并重新上传</button></view>
   <view wx:if="{{submission && submission.reviewStatus === 'recognition_failed'}}" class="error-hint">{{submission.recognition.error || '截图暂未识别成功，请更换清晰截图重试。'}}</view>
   <view wx:if="{{submission && submission.reviewStatus === 'cancelled'}}" class="cancelled-hint">上一次识别已取消，请重新选择需要汇总的截图。</view>
+  <view wx:if="{{submission && submission.reviewStatus === 'withdrawn'}}" class="voided-hint">上一次待审核提交已由你作废，请重新选择截图提交。</view>
   <view wx:if="{{submission && submission.reviewStatus === 'voided'}}" class="voided-hint">上一次提交已被管理员作废：{{submission.adminVoidReason || '不符合审核要求'}}。请核对截图后重新提交。</view>
 </view>

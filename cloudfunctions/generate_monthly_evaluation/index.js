@@ -219,6 +219,10 @@ exports.main = async (event = {}) => {
   const existing = record.memberEvaluation
   if (existing && existing.basedOnRevision === Number(record.revision || 0) && existing.content) return { evaluation: existing, cached: true }
   const evaluation = await generateCurrentSubmissionEvaluation(user, record, month)
+  const latest = (await recordRef.get()).data
+  if (!latest || Number(latest.revision || 0) !== Number(record.revision || 0) || !['pending_admin_review', 'approved'].includes(latest.reviewStatus)) {
+    return { evaluation: null, reason: 'submission_changed' }
+  }
   await recordRef.update({ data: { memberEvaluation: evaluation, updatedAt: db.serverDate() } })
   return { evaluation, cached: false }
 }

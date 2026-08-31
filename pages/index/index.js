@@ -1,8 +1,8 @@
-const { getHistoricalDashboard, getLifetimeStats } = require('../../services/cloud')
+const { getHistoricalDashboard, getLifetimeStats, withdrawPendingActivitySubmission } = require('../../services/cloud')
 const reviewDemo = require('../../services/review-demo')
 
 Page({
-  data: { dashboard: null, pct: 0, authorized: false, redirecting: false },
+  data: { dashboard: null, pct: 0, authorized: false, redirecting: false, withdrawingSubmission: false },
   onShow() {
     const app = getApp()
     app.globalData.sessionPromise.then(session => {
@@ -46,6 +46,28 @@ Page({
     wx.navigateTo({ url: `/pages/member-analysis/member-analysis?memberId=${encodeURIComponent(memberId)}` })
   },
   goUpload() { wx.navigateTo({ url: '/pages/upload/upload' }) },
+  withdrawSubmission() {
+    wx.showModal({
+      title: '作废本次提交？',
+      content: '作废后管理员将无法审核当前提交，你可以重新上传截图。原始截图会保留用于审计。',
+      confirmText: '作废并重提',
+      confirmColor: '#B24F35',
+      success: async result => {
+        if (!result.confirm) return
+        this.setData({ withdrawingSubmission: true })
+        try {
+          await withdrawPendingActivitySubmission()
+          await this.refresh()
+          wx.navigateTo({ url: '/pages/upload/upload' })
+        } catch (error) {
+          console.error('作废待审核提交失败', error)
+          wx.showToast({ title: error.message || '作废失败，请稍后重试', icon: 'none' })
+        } finally {
+          this.setData({ withdrawingSubmission: false })
+        }
+      }
+    })
+  },
   goFundLedger() { wx.navigateTo({ url: '/pages/fund-ledger/fund-ledger' }) },
   goReview() { wx.navigateTo({ url: '/pages/review/review' }) }
 })

@@ -275,6 +275,20 @@ exports.main = async (event = {}) => {
     return { submission: publicSubmission({ ...current, recognitionStatus: 'cancelled', reviewStatus: 'cancelled' }) }
   }
 
+  if (action === 'withdraw') {
+    const current = (await records.doc(recordId).get()).data
+    if (!current || current.reviewStatus !== 'pending_admin_review') {
+      throw new Error('当前提交已不在等待审核状态，无法作废')
+    }
+    const withdrawnEvaluation = current.memberEvaluation || null
+    await records.doc(recordId).update({ data: {
+      reviewStatus: 'withdrawn', memberWithdrawnAt: db.serverDate(),
+      memberWithdrawnRevision: Number(current.revision || 0),
+      withdrawnEvaluation, memberEvaluation: null, updatedAt: db.serverDate()
+    } })
+    return { submission: publicSubmission({ ...current, reviewStatus: 'withdrawn', memberEvaluation: null }) }
+  }
+
   if (action !== 'recognize') throw new Error('不支持的提交操作')
   const suppliedFileIds = Array.isArray(event.evidenceFileIds) ? event.evidenceFileIds : [event.evidenceFileId]
   const evidenceFileIds = [...new Set(suppliedFileIds.map(item => String(item || '')).filter(Boolean))]

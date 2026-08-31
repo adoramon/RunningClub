@@ -59,6 +59,7 @@
 .submission-pending-guide { display:flex; align-items:center; margin-top:20rpx; padding:24rpx 26rpx; border-radius:20rpx; background:#EAF5ED; color:#275F47; }
 .submission-pending-icon { display:flex; align-items:center; justify-content:center; width:56rpx; height:56rpx; border-radius:50%; background:#A9E7B9; color:#13563B; font-size:28rpx; font-weight:900; }
 .submission-pending-copy { flex:1; margin-left:16rpx; font-size:27rpx; font-weight:800; }.submission-pending-copy view:last-child { margin-top:5rpx; color:#668274; font-size:20rpx; font-weight:400; }
+.submission-withdraw-action { flex:0 0 136rpx; height:58rpx; margin:0 0 0 12rpx; padding:0 12rpx; border:1rpx solid #D6A89C; border-radius:999rpx; background:#FFF8F5; color:#A44A39; font-size:20rpx; font-weight:800; line-height:56rpx; }.submission-withdraw-action::after { border:none; }
 .fund-payment-guide { display:flex; align-items:center; margin-top:20rpx; padding:24rpx 26rpx; border-radius:20rpx; background:#FFF0E8; color:#924738; }.fund-payment-icon { display:flex; align-items:center; justify-content:center; width:56rpx; height:56rpx; border-radius:50%; background:#F1B49E; color:#843727; font-size:30rpx; font-weight:900; }.fund-payment-copy { flex:1; margin-left:16rpx; font-size:26rpx; font-weight:800; }.fund-payment-copy view:last-child { margin-top:5rpx; color:#A36457; font-size:20rpx; font-weight:400; }
 
 .member { display:flex; align-items:center; min-height:118rpx; border-bottom:1rpx solid #F0F0EC; }

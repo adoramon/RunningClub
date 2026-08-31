@@ -92,7 +92,7 @@ function previousFailureStreak(records, month) {
 }
 
 function hasActiveSubmission(record) {
-  return record && !['cancelled', 'voided', 'recognition_failed', 'failed'].includes(record.reviewStatus)
+  return record && !['cancelled', 'withdrawn', 'voided', 'recognition_failed', 'failed'].includes(record.reviewStatus)
 }
 
 async function findMissingSubmissions() {

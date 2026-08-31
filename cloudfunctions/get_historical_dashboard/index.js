@@ -333,7 +333,7 @@ exports.main = async (event = {}) => {
   const ledgerFundLastMonth = ledgerResult.data.filter(entry => entry.month === summaryMonth && entry.entryType === 'member_payment').reduce((sum, entry) => sum + (isNumber(entry.amount) ? entry.amount : 0), 0)
   const fundAddedLastMonth = round(historicalFundLastMonth + ledgerFundLastMonth)
   const [profile] = await attachTemporaryAvatarUrls([buildMemberProfile(memberResult.data, user, ownRecordsResult.data)])
-  const activeActivityMemberIds = new Set(monthActivitiesResult.data.filter(record => !['cancelled', 'voided', 'recognition_failed', 'failed'].includes(record.reviewStatus)).map(record => record.historicalMemberId))
+  const activeActivityMemberIds = new Set(monthActivitiesResult.data.filter(record => !['cancelled', 'withdrawn', 'voided', 'recognition_failed', 'failed'].includes(record.reviewStatus)).map(record => record.historicalMemberId))
   const settledMemberIds = new Set(settlementsResult.data.map(record => record.historicalMemberId))
   const missingSubmissionCount = summaryRecordsResult.data.filter(record => isNumber(record.targetKm) && !isNumber(record.equivalentKm) && !isNumber(record.fundAmount) && !settledMemberIds.has(record.legacyMemberKey) && !activeActivityMemberIds.has(record.legacyMemberKey)).length
   const myActivity = monthActivityByMemberId.get(user.historicalMemberId)

@@ -58,7 +58,7 @@
 
 `activityType` 为 `running`、`cycling`、`swimming`、`jump_rope`、`elevation` 或 `custom`。`custom` 必须由管理员审核并记录换算系数。
 
-截图提交以“成员 + 月份”保存一个当前提交文档；一次可提交 1 至 3 张截图，当前批次保存于 `evidenceFileIds`，重传前一批转入 `previousEvidenceFileIds` 审计保留。模型识别到的多项运动保存到 `recognition.activities`；该字段保存原始值、单位、截图序号、截图佐证文字和云端计算的等效公里数。成员逐项核对后的“是否计入、原始数值、服务端重新计算的等效公里数”保存到 `memberReviewedActivities`。`memberEvaluation` 保存阶段性评价正文、标题、模型名和基于的提交版本；它只使用结构化跑量摘要，不发送截图。状态按 `analyzing`、`recognized`、`failed`、`cancelled`、`pending_member_confirmation`、`pending_admin_review` 流转。成员可在确认前取消识别，文件和模型结果保留审计但不会进入结算。
+截图提交以“成员 + 月份”保存一个当前提交文档；一次可提交 1 至 3 张截图，当前批次保存于 `evidenceFileIds`，重传前一批转入 `previousEvidenceFileIds` 审计保留。模型识别到的多项运动保存到 `recognition.activities`；该字段保存原始值、单位、截图序号、截图佐证文字和云端计算的等效公里数。成员逐项核对后的“是否计入、原始数值、服务端重新计算的等效公里数”保存到 `memberReviewedActivities`。`memberEvaluation` 保存阶段性评价正文、标题、模型名和基于的提交版本；它只使用结构化跑量摘要，不发送截图。状态按 `analyzing`、`recognized`、`failed`、`cancelled`、`pending_member_confirmation`、`pending_admin_review`、`withdrawn` 流转。成员可在确认前取消识别，也可在管理员处理前撤回待审核提交；文件和识别结果继续保留审计但不会进入结算。
 
 ### monthly_settlements
 

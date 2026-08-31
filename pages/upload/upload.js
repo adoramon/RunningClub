@@ -1,4 +1,4 @@
-const { getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, generateMonthlyEvaluation } = require('../../services/cloud')
+const { getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, withdrawPendingActivitySubmission, generateMonthlyEvaluation } = require('../../services/cloud')
 
 function previousMonth() {
   const date = new Date()
@@ -149,6 +149,29 @@ Page({
         } catch (error) {
           console.error('取消截图识别失败', error)
           wx.showToast({ title: '取消失败，请稍后重试', icon: 'none' })
+        } finally {
+          this.setData({ loading: false })
+        }
+      }
+    })
+  },
+  withdrawSubmission() {
+    wx.showModal({
+      title: '作废本次提交？',
+      content: '作废后管理员将无法审核当前提交，你可以重新选择截图。原始截图会保留用于审计。',
+      confirmText: '作废并重提',
+      confirmColor: '#B24F35',
+      success: async result => {
+        if (!result.confirm) return
+        this.setData({ loading: true })
+        try {
+          const { submission } = await withdrawPendingActivitySubmission()
+          this.applySubmission(submission)
+          this.setData({ images: [] })
+          wx.showToast({ title: '已作废，请重新提交', icon: 'success' })
+        } catch (error) {
+          console.error('作废待审核提交失败', error)
+          wx.showToast({ title: error.message || '作废失败，请稍后重试', icon: 'none' })
         } finally {
           this.setData({ loading: false })
         }
