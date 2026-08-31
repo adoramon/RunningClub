@@ -4,12 +4,15 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
-// CloudBase 单次调用的硬上限为 60 秒；三张可让视觉模型推理和写库都有余量。
+// CloudBase 单次调用的硬上限为 60 秒；OCR 与文本判断共用该时间预算。
 const MAX_SCREENSHOT_COUNT = 3
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 const MAX_TOTAL_IMAGE_BYTES = 12 * 1024 * 1024
 const AI_API_BASE = process.env.RUNNING_CLUB_AI_API_BASE || 'https://ai.home.adoramon.com:13246/v1'
-const AI_MODEL = process.env.RUNNING_CLUB_AI_MODEL || 'local-vsr'
+const OCR_MODEL = process.env.RUNNING_CLUB_AI_OCR_MODEL || process.env.RUNNING_CLUB_AI_MODEL || 'local-vsr'
+const JUDGEMENT_MODEL = process.env.RUNNING_CLUB_AI_JUDGEMENT_MODEL || 'local-premium'
+const OCR_TIMEOUT_MS = 30000
+const JUDGEMENT_TIMEOUT_MS = 18000
 const round = value => Math.round(value * 100) / 100
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 
@@ -79,44 +82,106 @@ function canonicalType(value) {
   return aliases[type] || 'custom'
 }
 
-function normalizeActivities(value, imageCount) {
-  if (!Array.isArray(value)) return []
-  return value.slice(0, 8).map(item => {
+function modelContentText(content) {
+  return Array.isArray(content)
+    ? content.map(item => item && (item.text || item.content || '')).join('')
+    : String(content || '')
+}
+
+function parseStrictJson(content, errorLabel) {
+  const cleaned = modelContentText(content).replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+  try { return JSON.parse(cleaned) } catch (_) { throw new Error(`${errorLabel}返回了无效 JSON`) }
+}
+
+function parseOcrContent(content, imageCount) {
+  const parsed = parseStrictJson(content, '文字识别模型')
+  const sourceImages = Array.isArray(parsed.images) ? parsed.images : []
+  const images = Array.from({ length: imageCount }, (_, index) => {
+    const imageIndex = index + 1
+    const source = sourceImages.find(item => Number(item && item.imageIndex) === imageIndex) || sourceImages[index] || {}
+    const lines = (Array.isArray(source.lines) ? source.lines : [])
+      .map(item => typeof item === 'string' ? item : String(item && item.text || ''))
+      .map(item => item.trim()).filter(Boolean).slice(0, 120).map(item => item.slice(0, 180))
+    const confidence = Number(source.confidence)
+    return { imageIndex, lines, confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0 }
+  })
+  if (!images.some(image => image.lines.length)) throw new Error('文字识别模型未读取到有效文字')
+  return {
+    images,
+    notes: Array.isArray(parsed.notes) ? parsed.notes.map(item => String(item).slice(0, 120)).slice(0, 5) : []
+  }
+}
+
+function numericValueAppearsInText(value, text) {
+  const expected = Number(value)
+  if (!Number.isFinite(expected)) return false
+  const candidates = String(text || '').match(/\d[\d,，]*(?:\.\d+)?/g) || []
+  return candidates.some(candidate => {
+    const actual = Number(candidate.replace(/[,，]/g, ''))
+    return Number.isFinite(actual) && Math.abs(actual - expected) <= Math.max(0.0001, Math.abs(expected) * 1e-10)
+  })
+}
+
+function referencedOcrEvidence(ocr, imageIndex, lineIndexes) {
+  const image = ocr.images.find(item => item.imageIndex === imageIndex)
+  if (!image) return null
+  const indexes = [...new Set((Array.isArray(lineIndexes) ? lineIndexes : [lineIndexes])
+    .map(item => Number.parseInt(item, 10)).filter(item => item >= 1 && item <= image.lines.length))].slice(0, 4)
+  if (!indexes.length) return null
+  const lines = indexes.map(index => image.lines[index - 1])
+  return { indexes, text: lines.join(' · ') }
+}
+
+function normalizeActivities(value, imageCount, ocr) {
+  if (!Array.isArray(value)) return { activities: [], rejectedCount: 0 }
+  let rejectedCount = 0
+  const activities = value.slice(0, 8).map(item => {
+    const imageIndex = Math.max(1, Math.min(imageCount || 1, Number.parseInt(item && item.imageIndex, 10) || 1))
     const activityType = canonicalType(item && item.activityType)
     const rawValue = Number(item && item.rawValue)
     const rawUnit = normalizedUnit(item && item.rawUnit).slice(0, 20)
     const equivalentKm = activityEquivalentKm({ activityType, rawValue, rawUnit })
+    const evidence = referencedOcrEvidence(ocr, imageIndex, item && (item.sourceLineIndexes || item.sourceLineIndex))
     return {
       activityType,
       rawValue: Number.isFinite(rawValue) && rawValue >= 0 ? rawValue : null,
       rawUnit,
       equivalentKm,
-      evidenceImageIndex: Math.max(1, Math.min(imageCount || 1, Number.parseInt(item && item.imageIndex, 10) || 1)),
-      evidence: String(item && item.evidence || '').trim().slice(0, 120),
-      unitValid: isValidActivityUnit(activityType, rawUnit)
+      evidenceImageIndex: imageIndex,
+      evidenceLineIndexes: evidence ? evidence.indexes : [],
+      evidence: evidence ? evidence.text.slice(0, 180) : '',
+      unitValid: isValidActivityUnit(activityType, rawUnit),
+      evidenceValid: Boolean(evidence && numericValueAppearsInText(rawValue, evidence.text))
     }
-  }).filter(item => item.rawValue !== null && item.unitValid).map(({ unitValid, ...item }) => item)
+  }).filter(item => {
+    const valid = item.rawValue !== null && item.unitValid && item.evidenceValid
+    if (!valid) rejectedCount += 1
+    return valid
+  }).map(({ unitValid, evidenceValid, ...item }) => item)
+  return { activities, rejectedCount }
 }
 
-function parseModelContent(content, imageCount) {
-  const text = Array.isArray(content)
-    ? content.map(item => item && (item.text || item.content || '')).join('')
-    : String(content || '')
-  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-  const parsed = JSON.parse(cleaned)
-  const activities = normalizeActivities(parsed.activities, imageCount)
+function parseJudgementContent(content, imageCount, expectedMonth, ocr) {
+  const parsed = parseStrictJson(content, '数据判断模型')
+  const normalized = normalizeActivities(parsed.activities, imageCount, ocr)
+  const activities = normalized.activities
   if (!activities.length) throw new Error('截图中未识别到可换算的运动数据')
   const hasCustomActivity = activities.some(item => item.equivalentKm === null)
   const equivalentKm = hasCustomActivity ? null : round(activities.reduce((sum, item) => sum + item.equivalentKm, 0))
   const confidence = Number(parsed.confidence)
+  const screenshotMonth = /^\d{4}-\d{2}$/.test(String(parsed.screenshotMonth || '')) ? parsed.screenshotMonth : null
+  const monthMismatch = Boolean(screenshotMonth && screenshotMonth !== expectedMonth)
+  const notes = Array.isArray(parsed.notes) ? parsed.notes.map(item => String(item).slice(0, 120)).slice(0, 5) : []
+  if (normalized.rejectedCount) notes.push(`有 ${normalized.rejectedCount} 项判断无法在 OCR 原文中验证，已自动排除`)
+  if (monthMismatch) notes.push(`截图月份 ${screenshotMonth} 与应提交月份 ${expectedMonth} 不一致`)
   return {
     sourceApp: String(parsed.sourceApp || '').trim().slice(0, 60),
-    screenshotMonth: /^\d{4}-\d{2}$/.test(String(parsed.screenshotMonth || '')) ? parsed.screenshotMonth : null,
+    screenshotMonth,
     confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0,
     activities,
     suggestedEquivalentKm: equivalentKm,
-    needsReview: Boolean(parsed.needsReview) || imageCount > 1 || hasCustomActivity || equivalentKm === null,
-    notes: Array.isArray(parsed.notes) ? parsed.notes.map(item => String(item).slice(0, 120)).slice(0, 5) : []
+    needsReview: Boolean(parsed.needsReview) || imageCount > 1 || hasCustomActivity || equivalentKm === null || normalized.rejectedCount > 0 || monthMismatch,
+    notes: notes.slice(0, 5)
   }
 }
 
@@ -146,7 +211,7 @@ function reviewedActivitiesFor(activities, requestedReviews) {
   })
 }
 
-function requestJson(options, headers, body) {
+function requestJson(options, headers, body, timeoutMs) {
   return new Promise((resolve, reject) => {
     const request = https.request({ ...options, method: 'POST', headers }, response => {
       const chunks = []
@@ -160,7 +225,7 @@ function requestJson(options, headers, body) {
         try { resolve(JSON.parse(text)) } catch (_) { reject(new Error('模型服务返回了无效响应')) }
       })
     })
-    request.setTimeout(48000, () => request.destroy(new Error('模型识别超时')))
+    request.setTimeout(timeoutMs, () => request.destroy(new Error('模型识别超时')))
     request.on('error', reject)
     request.write(body)
     request.end()
@@ -178,30 +243,63 @@ async function recognizeImages(fileIds, expectedMonth) {
   const imageParts = fileContents.map(fileContent => ({
     type: 'image_url', image_url: { url: `data:${imageMimeType(fileContent)};base64,${fileContent.toString('base64')}` }
   }))
-  const prompt = `你是运动截图结构化识别器。以下共有 ${fileIds.length} 张截图，全部是同一成员 ${expectedMonth} 的月度运动记录。请逐图识别并把所有不同运动记录相加；只根据截图中清晰可见、明确标注为本月或累计总量的距离/次数提取数据，不猜测、不补全。\n\n【总量优先规则，必须遵守】一张截图只读取该运动的“累计”“本月累计”“月度总计”“总距离”或等义总量卡片。若游泳截图顶部显示“累计游泳距离 48,806 米”，而下方还有分段、单次、泳姿、训练记录或按天明细，则只输出 48,806 米；下方任一分段数字都不得输出、不得相加、不得作为替代值。跑步和骑行截图同样：忽略单次活动、分段、配速、时长、卡路里、排名和目标值。卡路里/大卡/kcal、步数、时长、心率、消耗热量永远不是跑量：不得把它们输出为任何 activityType，也不得使用 count 作为跑步、骑行或游泳的单位。若找不到明确的累计/本月总量标签，不输出该项并在 notes 说明，设 needsReview=true。不要把同一截图内重复展示的同一个总量重复计入；若不同截图疑似展示同一条或同一月总量，不要擅自相加，设 needsReview=true 并写入 notes。\n\n数字必须逐字读取并保留完整精度：带千位分隔符的 48,806 米必须输出 rawValue=48806、rawUnit="m"，不能缩写为 48.806、2600 或其他数值；52.76 公里必须输出 rawValue=52.76、rawUnit="km"。无法明确看清完整数字时，不输出该项并在 notes 说明。\n\n支持类型及云端换算规则：running（跑步，距离，仅 km/m）；cycling（骑行，距离，仅 km/m，后除以3）；swimming（游泳，距离，仅 km/m，后乘以5）；jump_rope（跳绳，仅 count，次数后除以100）；elevation（累计爬升，仅 m，乘以0.02）。无法明确归类时用 custom，并设 needsReview=true。\n\n只输出不带 Markdown 的 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${fileIds.length},"activityType":"running|cycling|swimming|jump_rope|elevation|custom","rawValue":数字,"rawUnit":"km|m|count","evidence":"累计/本月总量标签 + 完整数字 + 单位"}],"confidence":0到1,"needsReview":true或false,"notes":["不确定项"]}`
-  const requestBody = JSON.stringify({
-    model: AI_MODEL,
-    temperature: 0,
-    response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: '你必须返回严格 JSON，绝不输出解释性文字。' },
-      { role: 'user', content: [{ type: 'text', text: prompt }, ...imageParts] }
-    ]
-  })
   const base = new URL(AI_API_BASE)
   const path = `${base.pathname.replace(/\/$/, '')}/chat/completions`
-  const response = await requestJson({ protocol: base.protocol, hostname: base.hostname, port: base.port, path }, {
+  const requestOptions = { protocol: base.protocol, hostname: base.hostname, port: base.port, path }
+  const requestHeaders = requestBody => ({
     Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(requestBody)
-  }, requestBody)
-  const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content
-  const rawResponse = JSON.stringify(response).slice(0, 8000)
+  })
+  let ocrRawResponse = ''
+  let judgementRawResponse = ''
+
+  const ocrPrompt = `你是严格的截图文字抄录器。以下共有 ${fileIds.length} 张图片。你的唯一任务是逐图抄录所有清晰可见的文字、数字、标点和单位，并按视觉阅读顺序逐行输出。不要判断哪个数字是运动总量，不要筛选字段，不要计算，不要换算，不要合并多张图片，也不要根据常识纠正或补全数字。千位分隔符、小数点和单位必须原样保留；看不清的内容不要猜测，可在 notes 中说明。只输出 JSON：{"images":[{"imageIndex":1,"lines":["原样文字行"],"confidence":0到1}],"notes":["不确定内容"]}`
+  const ocrRequestBody = JSON.stringify({
+    model: OCR_MODEL,
+    temperature: 0,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: '你只负责逐字抄录图片文字，禁止进行业务判断；必须返回严格 JSON。' },
+      { role: 'user', content: [{ type: 'text', text: ocrPrompt }, ...imageParts] }
+    ]
+  })
   try {
-    const recognized = parseModelContent(content, fileIds.length)
-    return { ...recognized, provider: 'openai-compatible', model: AI_MODEL, rawResponse }
+    const ocrResponse = await requestJson(requestOptions, requestHeaders(ocrRequestBody), ocrRequestBody, OCR_TIMEOUT_MS)
+    ocrRawResponse = JSON.stringify(ocrResponse).slice(0, 5000)
+    const ocrContent = ocrResponse && ocrResponse.choices && ocrResponse.choices[0] && ocrResponse.choices[0].message && ocrResponse.choices[0].message.content
+    const ocr = parseOcrContent(ocrContent, fileIds.length)
+    const indexedOcr = {
+      images: ocr.images.map(image => ({
+        imageIndex: image.imageIndex,
+        lines: image.lines.map((text, index) => ({ lineIndex: index + 1, text }))
+      }))
+    }
+    const judgementPrompt = `你是东成西就跑团的运动数据判断器。你只能根据下面提供的 OCR 文字判断，不得读取图片，不得创造 OCR 中不存在的数字。目标月份是 ${expectedMonth}。\n\n判断规则：每张截图只选择明确标注为“累计”“本月累计”“月度总计”“总距离”“总里程”或等义字段的运动总量。若同图同时有总量和单次、分段、按天明细，只选总量。卡路里/kcal/大卡、步数、时长、配速、心率、排名和目标值不得计入。不同截图疑似为同一个月同一运动总量时不得重复计入，应设 needsReview=true。支持 running、cycling、swimming、jump_rope、elevation；无法明确判断时不要输出该项。rawValue 必须是所引用 OCR 行中逐字存在的数字，rawUnit 必须来自所引用 OCR 行。sourceLineIndexes 填写支撑该判断的 1 至 4 个 OCR 行号。不要计算等效跑量。\n\nOCR 原文：${JSON.stringify(indexedOcr)}\n\n只输出 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${fileIds.length},"sourceLineIndexes":[1],"activityType":"running|cycling|swimming|jump_rope|elevation","rawValue":数字,"rawUnit":"km|m|count"}],"confidence":0到1,"needsReview":true或false,"notes":["判断说明"]}`
+    const judgementRequestBody = JSON.stringify({
+      model: JUDGEMENT_MODEL,
+      temperature: 0,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: '你只根据 OCR 原文判断运动总量，不得创造数字；必须返回严格 JSON。' },
+        { role: 'user', content: judgementPrompt }
+      ]
+    })
+    const judgementResponse = await requestJson(requestOptions, requestHeaders(judgementRequestBody), judgementRequestBody, JUDGEMENT_TIMEOUT_MS)
+    judgementRawResponse = JSON.stringify(judgementResponse).slice(0, 5000)
+    const judgementContent = judgementResponse && judgementResponse.choices && judgementResponse.choices[0] && judgementResponse.choices[0].message && judgementResponse.choices[0].message.content
+    const recognized = parseJudgementContent(judgementContent, fileIds.length, expectedMonth, ocr)
+    return {
+      ...recognized,
+      provider: 'openai-compatible',
+      model: JUDGEMENT_MODEL,
+      ocrModel: OCR_MODEL,
+      judgementModel: JUDGEMENT_MODEL,
+      ocr,
+      rawResponse: JSON.stringify({ ocr: ocrRawResponse, judgement: judgementRawResponse }).slice(0, 8000)
+    }
   } catch (error) {
-    error.rawResponse = rawResponse
+    error.rawResponse = JSON.stringify({ ocr: ocrRawResponse, judgement: judgementRawResponse }).slice(0, 8000)
     throw error
   }
 }
