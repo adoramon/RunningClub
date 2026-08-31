@@ -11,7 +11,7 @@ function demoDashboard() {
   return {
     isReviewDemo: true, summaryMonth: '演示月份', completionPct: 109, summaryRingStyle: 'background:conic-gradient(#A9ECA9 100%,rgba(255,255,255,.16) 0);',
     targetMemberCount: 4, actualMemberCount: 4, totalActualText: '249.00', totalTargetText: '230.00', fundBalanceText: '126.00', fundAddedLastMonthText: '0.00',
-    myLastMonthSubmitted: true, myPendingFundPayment: null, isAdmin: false,
+    myLastMonthSubmitted: true, mySubmissionAwaitingReview: false, myPendingFundPayment: null, isAdmin: false,
     lifetime: { totalKmText: '8,426.50', operatingText: '演示数据', comparisons: [{ label: '相当于绕赤道', value: '0.21 圈' }, { label: '相当于北京—上海往返', value: '3.51 趟' }, { label: '相当于北京—广州往返', value: '2.01 趟' }, { label: '相当于北京—拉萨往返', value: '1.12 趟' }] },
     ranking: members.map((member, index) => ({ ...member, targetText: String(member.targetKm), actualText: String(member.actualKm), actualNote: member.pct >= 100 ? '已达成目标' : '已缴纳公积金', actualNoteClass: member.pct >= 100 ? 'status-completed' : 'status-paid', registered: true, isMe: index === 0 }))
   }
