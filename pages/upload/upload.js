@@ -159,7 +159,7 @@ Page({
     wx.showModal({
       title: '作废本次提交？',
       content: '作废后管理员将无法审核当前提交，你可以重新选择截图。原始截图会保留用于审计。',
-      confirmText: '作废并重提',
+      confirmText: '确认作废',
       confirmColor: '#B24F35',
       success: async result => {
         if (!result.confirm) return
@@ -175,6 +175,10 @@ Page({
         } finally {
           this.setData({ loading: false })
         }
+      },
+      fail: error => {
+        console.error('打开作废确认弹窗失败', error)
+        wx.showToast({ title: '暂时无法打开确认窗口', icon: 'none' })
       }
     })
   }

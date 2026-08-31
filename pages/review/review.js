@@ -196,7 +196,7 @@ Page({
       content: isFund
         ? `${member.displayName} 上月承诺 ${member.targetText} km，连续未达标第 ${member.failureStreak} 月，应缴 ¥${member.fundDueText}。确认到账后将计入跑团公积金。`
         : `将 ${member.displayName} 标记为 ${member.month} 提前请假，不计入本次公积金。`,
-      confirmText: isFund ? '确认已缴 ¥' + member.fundDueText : '确认请假',
+      confirmText: isFund ? '确认已缴' : '确认请假',
       confirmColor: isFund ? '#1F6F54' : '#A96E27',
       success: async result => {
         if (!result.confirm) return
@@ -218,7 +218,7 @@ Page({
     wx.showModal({
       title: '跑量未达标，确认已缴公积金？',
       content: `${payment.displayName} 上月实际 ${payment.actualText} km，承诺 ${payment.targetText} km，连续未达标第 ${payment.failureStreak} 月，应缴 ¥${payment.fundDueText}。`,
-      confirmText: '确认已缴 ¥' + payment.fundDueText,
+      confirmText: '确认已缴',
       confirmColor: '#1F6F54',
       success: result => {
         if (result.confirm) this.confirmFundPayment(payment.memberId)
