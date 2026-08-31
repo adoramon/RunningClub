@@ -14,7 +14,7 @@
     <button class="primary-btn submit" loading="{{loading}}" bindtap="recognize">智能识别并汇总</button>
   </view>
 
-  <view wx:if="{{submission && submission.recognitionStatus === 'recognized'}}" class="card result-card">
+  <view wx:if="{{submission && submission.recognitionStatus === 'recognized' && submission.reviewStatus === 'pending_member_confirmation'}}" class="card result-card">
     <view class="result-heading"><view><view class="field-label">识别结果</view><view class="result-meta">已分析 {{submission.evidenceCount || 1}} 张截图 · 置信度 {{confidenceText}}%</view></view><view class="result-tag">待确认</view></view>
     <view wx:if="{{evidenceFiles.length}}" class="proof-strip"><image wx:for="{{evidenceFiles}}" wx:key="fileId" class="proof-thumbnail" src="{{item.fileId}}" mode="aspectFill"/><view class="proof-copy">核对截图与每项识别依据</view></view>
     <view class="review-intro">请逐项核对。可修改原始数值或选择“不计入”；系统会按规则重新计算总跑量。</view>
