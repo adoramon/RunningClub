@@ -13,6 +13,7 @@ const OCR_MODEL = process.env.RUNNING_CLUB_AI_OCR_MODEL || process.env.RUNNING_C
 const JUDGEMENT_MODEL = process.env.RUNNING_CLUB_AI_JUDGEMENT_MODEL || 'local-premium'
 const OCR_TIMEOUT_MS = 30000
 const JUDGEMENT_TIMEOUT_MS = 18000
+const STANDALONE_JUDGEMENT_TIMEOUT_MS = 48000
 const round = value => Math.round(value * 100) / 100
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 
@@ -304,6 +305,42 @@ async function recognizeImages(fileIds, expectedMonth) {
   }
 }
 
+async function judgeStoredOcr(ocr, imageCount, expectedMonth) {
+  const apiKey = process.env.RUNNING_CLUB_AI_API_KEY
+  if (!apiKey) throw new Error('模型服务尚未配置，请联系管理员')
+  const indexedOcr = {
+    images: ocr.images.map(image => ({
+      imageIndex: image.imageIndex,
+      lines: image.lines.map((text, index) => ({ lineIndex: index + 1, text }))
+    }))
+  }
+  const judgementPrompt = `你是东成西就跑团的运动数据判断器。你只能根据下面提供的 OCR 文字判断，不得读取图片，不得创造 OCR 中不存在的数字。目标月份是 ${expectedMonth}。\n\n判断规则：每张截图只选择明确标注为“累计”“本月累计”“月度总计”“总距离”“总里程”或等义字段的运动总量。若同图同时有总量和单次、分段、按天明细，只选总量。卡路里/kcal/大卡、步数、时长、配速、心率、排名和目标值不得计入。不同截图疑似为同一个月同一运动总量时不得重复计入，应设 needsReview=true。支持 running、cycling、swimming、jump_rope、elevation；无法明确判断时不要输出该项。rawValue 必须是所引用 OCR 行中逐字存在的数字，rawUnit 必须来自所引用 OCR 行。sourceLineIndexes 填写支撑该判断的 1 至 4 个 OCR 行号。不要计算等效跑量。\n\nOCR 原文：${JSON.stringify(indexedOcr)}\n\n只输出 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${imageCount},"sourceLineIndexes":[1],"activityType":"running|cycling|swimming|jump_rope|elevation","rawValue":数字,"rawUnit":"km|m|count"}],"confidence":0到1,"needsReview":true或false,"notes":["判断说明"]}`
+  const requestBody = JSON.stringify({
+    model: JUDGEMENT_MODEL,
+    temperature: 0,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: '你只根据 OCR 原文判断运动总量，不得创造数字；必须返回严格 JSON。' },
+      { role: 'user', content: judgementPrompt }
+    ]
+  })
+  const base = new URL(AI_API_BASE)
+  const path = `${base.pathname.replace(/\/$/, '')}/chat/completions`
+  const response = await requestJson({ protocol: base.protocol, hostname: base.hostname, port: base.port, path }, {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(requestBody)
+  }, requestBody, STANDALONE_JUDGEMENT_TIMEOUT_MS)
+  const rawResponse = JSON.stringify(response).slice(0, 5000)
+  try {
+    const content = response && response.choices && response.choices[0] && response.choices[0].message && response.choices[0].message.content
+    return { recognized: parseJudgementContent(content, imageCount, expectedMonth, ocr), rawResponse }
+  } catch (error) {
+    error.rawResponse = rawResponse
+    throw error
+  }
+}
+
 function publicSubmission(record) {
   if (!record) return null
   const recognition = record.recognition || {}
@@ -385,6 +422,34 @@ exports.main = async (event = {}) => {
       withdrawnEvaluation, memberEvaluation: null, updatedAt: db.serverDate()
     } })
     return { submission: publicSubmission({ ...current, reviewStatus: 'withdrawn', memberEvaluation: null }) }
+  }
+
+  if (action === 'judge') {
+    const current = (await records.doc(recordId).get()).data
+    if (!current || current.recognitionStatus !== 'ocr_completed' || !current.ocr || current.reviewStatus !== 'pending_member_confirmation') {
+      throw new Error('请先完成截图文字识别')
+    }
+    try {
+      const result = await judgeStoredOcr(current.ocr, (current.evidenceFileIds || []).length, month)
+      const recognition = {
+        ...result.recognized,
+        provider: 'openai-compatible', model: JUDGEMENT_MODEL,
+        ocrModel: current.ocrModel || OCR_MODEL, judgementModel: JUDGEMENT_MODEL,
+        ocr: current.ocr,
+        rawResponse: JSON.stringify({ ocr: current.ocrRawResponse || '', judgement: result.rawResponse }).slice(0, 8000)
+      }
+      await records.doc(recordId).update({ data: {
+        recognitionStatus: 'recognized', recognition, recognizedAt: db.serverDate(), updatedAt: db.serverDate()
+      } })
+      return { submission: publicSubmission({ ...current, recognitionStatus: 'recognized', recognition }) }
+    } catch (error) {
+      const recognition = { error: safeError(error), activities: [], notes: [], ocr: current.ocr }
+      if (error && error.rawResponse) recognition.rawResponse = error.rawResponse
+      await records.doc(recordId).update({ data: {
+        recognitionStatus: 'failed', recognition, reviewStatus: 'recognition_failed', updatedAt: db.serverDate()
+      } })
+      return { submission: publicSubmission({ ...current, recognitionStatus: 'failed', recognition, reviewStatus: 'recognition_failed' }) }
+    }
   }
 
   if (action !== 'recognize') throw new Error('不支持的提交操作')

@@ -1,4 +1,4 @@
-const { getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, withdrawPendingActivitySubmission, generateMonthlyEvaluation } = require('../../services/cloud')
+const { getActivitySubmission, recognizeActivityScreenshots, judgeActivityScreenshot, confirmActivitySubmission, cancelActivityRecognition, withdrawPendingActivitySubmission, generateMonthlyEvaluation } = require('../../services/cloud')
 
 function previousMonth() {
   const date = new Date()
@@ -36,9 +36,27 @@ Page({
   async loadSubmission() {
     try {
       const { submission } = await getActivitySubmission()
-      if (submission) this.applySubmission(submission)
+      if (!submission) return
+      this.applySubmission(submission)
+      if (submission.recognitionStatus === 'ocr_completed') await this.resumeJudgement()
     } catch (error) {
       console.error('读取上月提交记录失败', error)
+    }
+  },
+  async resumeJudgement() {
+    if (this.data.loading) return
+    this.setData({ loading: true })
+    wx.showLoading({ title: '正在分析跑量…', mask: true })
+    try {
+      const { submission } = await judgeActivityScreenshot()
+      this.applySubmission(submission)
+      if (submission.recognitionStatus === 'recognized') wx.showToast({ title: '分析完成，请确认结果', icon: 'success' })
+    } catch (error) {
+      console.error('恢复跑量分析失败', error)
+      wx.showToast({ title: '分析暂未完成，请稍后重试', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+      this.setData({ loading: false })
     }
   },
   applySubmission(submission) {

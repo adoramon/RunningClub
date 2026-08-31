@@ -6,7 +6,10 @@
 
 ## 云函数
 
-函数名：`submit_activity_screenshot`。
+两个模型分别运行在独立云函数中：
+
+- `ocr_activity_screenshot`：下载截图并调用 `local-vsr`，将 OCR 原文保存到当前活动记录；
+- `submit_activity_screenshot`：读取已保存的 OCR 原文，调用 `local-premium` 判断数据，并负责成员确认、取消和撤回。
 
 它支持以下操作：
 
@@ -20,7 +23,7 @@
 
 ## 模型环境变量
 
-在 CloudBase 的 `submit_activity_screenshot` 云函数配置中设置以下环境变量，不要把密钥提交到 Git：
+在 CloudBase 云函数配置中设置以下环境变量，不要把密钥提交到 Git。`RUNNING_CLUB_AI_API_KEY` 和 API 地址需要同时配置给两个函数；模型变量按各自职责配置：
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
@@ -32,7 +35,7 @@
 
 接口需兼容 `POST /v1/chat/completions`，并支持 OpenAI 风格的多模态 `image_url`（Data URL）输入与 JSON 输出。模型密钥仅在云函数运行时通过 `process.env` 读取。
 
-CloudBase 云函数超时的硬上限为 60 秒。OCR 请求最多运行 30 秒，文本判断请求最多运行 18 秒，为数据库回写保留余量；单批限制为最多 3 张，单张图片最大 4 MB，单次所有图片总大小最大 12 MB。
+CloudBase 每个云函数的超时硬上限为 60 秒。客户端先等待 OCR 函数完成，再发起数据判断函数，因此两个阶段各自拥有独立的 60 秒运行窗口；两个模型的内部请求均在 48 秒主动中断，为数据库回写保留余量。如果第一阶段完成后用户关闭页面，再次进入上传页会根据 `ocr_completed` 状态自动继续第二阶段，不需要重新上传截图。单批限制为最多 3 张，单张图片最大 4 MB，单次所有图片总大小最大 12 MB。
 
 ## 模型输出约定
 

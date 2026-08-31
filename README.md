@@ -2,7 +2,7 @@
 
 东成西就跑团的原生微信小程序。它服务于一个封闭跑团：成员先用历史艺名完成唯一认领，再查看跑量、提交上月运动截图、接受管理员审核，并持续公开公积金收支。
 
-当前代码对应 **v1.3.0 候选版**，用于上传微信体验版和提交审核。
+当前代码对应 **v1.3.1 候选版**，用于上传微信体验版和提交审核。
 
 ## 已实现能力
 
@@ -51,7 +51,7 @@
 - 数据：历史成员、历史月度记录、用户绑定、截图提交、月度结算、公积金流水与月度评价。
 - AI：视觉模型仅用于用户主动上传的运动截图识别；文本模型仅接收结构化跑量摘要生成评价。密钥仅存云函数环境变量，不进入客户端或 Git。
 
-核心云函数包括：`get_current_user`、`claim_historical_identity`、`get_historical_dashboard`、`submit_activity_screenshot`、`review_activity_submissions`、`generate_monthly_evaluation`、`manage_fund_ledger` 和 `claim_review_access`。
+核心云函数包括：`get_current_user`、`claim_historical_identity`、`get_historical_dashboard`、`ocr_activity_screenshot`、`submit_activity_screenshot`、`review_activity_submissions`、`generate_monthly_evaluation`、`manage_fund_ledger` 和 `claim_review_access`。
 
 ## 本地开发与部署
 

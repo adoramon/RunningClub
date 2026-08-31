@@ -35,7 +35,14 @@ function getActivitySubmission() {
 }
 
 function recognizeActivityScreenshots(evidenceFileIds) {
-  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'recognize', evidenceFileIds } }).then(result => result.result)
+  return wx.cloud.callFunction({ name: 'ocr_activity_screenshot', data: { evidenceFileIds } }).then(result => {
+    if (!result.result || !result.result.ocrCompleted) return getActivitySubmission()
+    return judgeActivityScreenshot()
+  })
+}
+
+function judgeActivityScreenshot() {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'judge' } }).then(result => result.result)
 }
 
 function confirmActivitySubmission({ reviewedActivities, confirmedEquivalentKm }) {
@@ -82,4 +89,4 @@ function withdrawFund({ amount, purpose }) {
   return wx.cloud.callFunction({ name: 'manage_fund_ledger', data: { action: 'withdraw', amount, purpose } }).then(result => result.result)
 }
 
-module.exports = { getCurrentUser, claimHistoricalIdentity, claimReviewAccess, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, confirmActivitySubmission, cancelActivityRecognition, withdrawPendingActivitySubmission, getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission, confirmPendingFundPayment, generateMonthlyEvaluation, getFundLedger, withdrawFund }
+module.exports = { getCurrentUser, claimHistoricalIdentity, claimReviewAccess, suggestHistoricalAliases, saveProfileAvatar, getHistoricalDashboard, getLifetimeStats, getMemberHistoricalProfile, getActivitySubmission, recognizeActivityScreenshots, judgeActivityScreenshot, confirmActivitySubmission, cancelActivityRecognition, withdrawPendingActivitySubmission, getPendingActivityReviews, approveActivityReview, voidActivityReview, resolveMissingSubmission, confirmPendingFundPayment, generateMonthlyEvaluation, getFundLedger, withdrawFund }
