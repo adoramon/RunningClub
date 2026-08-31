@@ -40,7 +40,8 @@ function enrichReview(review) {
     }
   })
   const total = activities.reduce((sum, item) => sum + (item.included && item.reviewEquivalentKm !== null ? item.reviewEquivalentKm : 0), 0)
-  return { ...review, activities, evidenceFiles: (review.evidenceFileIds || []).map((fileId, index) => ({ fileId, index: index + 1 })), adminTotalText: total.toFixed(2), voidReason: '' }
+  const evidenceFiles = review.evidenceFiles || (review.evidenceFileIds || []).map((fileId, index) => ({ fileId, index: index + 1, tempUrl: fileId }))
+  return { ...review, activities, evidenceFiles, adminTotalText: total.toFixed(2), voidReason: '' }
 }
 
 Page({
@@ -79,10 +80,14 @@ Page({
     this.updateReview(id, review => ({ ...review, voidReason }))
   },
   previewEvidence(event) {
-    const { id, fileId } = event.currentTarget.dataset
+    const { id, url } = event.currentTarget.dataset
     const review = this.data.reviews.find(item => item.submissionId === id)
-    if (!review) return
-    wx.previewImage({ current: fileId, urls: review.evidenceFileIds || [] })
+    const urls = review ? review.evidenceFiles.map(item => item.tempUrl).filter(Boolean) : []
+    if (!url || !urls.length) {
+      wx.showToast({ title: '截图链接暂不可用，请刷新后重试', icon: 'none' })
+      return
+    }
+    wx.previewImage({ current: url, urls })
   },
   approve(event) {
     const submissionId = event.currentTarget.dataset.id
