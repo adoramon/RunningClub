@@ -67,7 +67,7 @@ async function resolveEvidenceUrls(reviews) {
 }
 
 Page({
-  data: { reviews: [], missingSubmissions: [], pendingFundPayments: [], loading: true, actingId: '' },
+  data: { reviews: [], missingSubmissions: [], pendingFundPayments: [], loading: true, actingId: '', previewImageUrl: '' },
   onShow() { this.loadReviews() },
   async loadReviews() {
     this.setData({ loading: true })
@@ -105,28 +105,29 @@ Page({
   async previewEvidence(event) {
     const { id, url, fileId } = event.currentTarget.dataset
     const review = this.data.reviews.find(item => item.submissionId === id)
-    const urls = review ? review.evidenceFiles.map(item => item.tempUrl).filter(Boolean) : []
-    if (url && urls.length) {
-      wx.previewImage({ current: url, urls })
+    if (url) {
+      this.setData({ previewImageUrl: url })
       return
     }
-    const fileIds = review ? review.evidenceFiles.map(item => item.fileId).filter(Boolean) : [fileId].filter(Boolean)
-    if (!fileIds.length) {
+    const targetFileId = fileId || (review && review.evidenceFiles[0] && review.evidenceFiles[0].fileId)
+    if (!targetFileId) {
       wx.showToast({ title: '未找到原始截图', icon: 'none' })
       return
     }
     wx.showLoading({ title: '正在加载原图' })
     try {
-      const downloads = await Promise.all(fileIds.map(fileID => wx.cloud.downloadFile({ fileID })))
-      const localPaths = downloads.map(item => item.tempFilePath).filter(Boolean)
-      if (!localPaths.length) throw new Error('下载截图失败')
-      wx.previewImage({ current: localPaths[0], urls: localPaths })
+      const result = await wx.cloud.downloadFile({ fileID: targetFileId })
+      if (!result.tempFilePath) throw new Error('下载截图失败')
+      this.setData({ previewImageUrl: result.tempFilePath })
     } catch (error) {
       console.error('下载审核截图失败', error)
       wx.showToast({ title: '原图暂不可访问，请稍后重试', icon: 'none' })
     } finally {
       wx.hideLoading()
     }
+  },
+  closeEvidencePreview() {
+    this.setData({ previewImageUrl: '' })
   },
   approve(event) {
     const submissionId = event.currentTarget.dataset.id
