@@ -133,18 +133,41 @@ function referencedOcrEvidence(ocr, imageIndex, lineIndexes) {
   return { indexes, text: lines.join(' · ') }
 }
 
-function normalizeActivities(value, imageCount, ocr) {
+function monthsMentionedInText(text, expectedMonth) {
+  const expectedYear = String(expectedMonth || '').slice(0, 4)
+  const months = new Set()
+  const source = String(text || '')
+  const fullPattern = /(20\d{2})\s*(?:年|[-/.])\s*(1[0-2]|0?[1-9])\s*月?/g
+  let match
+  while ((match = fullPattern.exec(source))) months.add(`${match[1]}-${String(Number(match[2])).padStart(2, '0')}`)
+  const monthPattern = /(^|\D)(1[0-2]|0?[1-9])\s*月(?!个)/g
+  while ((match = monthPattern.exec(source))) months.add(`${expectedYear}-${String(Number(match[2])).padStart(2, '0')}`)
+  return [...months]
+}
+
+function normalizeActivities(value, imageCount, ocr, expectedMonth) {
   if (!Array.isArray(value)) return { activities: [], rejectedCount: 0 }
   let rejectedCount = 0
+  let monthRejectedCount = 0
   const activities = value.slice(0, 8).map(item => {
     const imageIndex = Math.max(1, Math.min(imageCount || 1, Number.parseInt(item && item.imageIndex, 10) || 1))
+    const ocrImage = (ocr.images || []).find(image => Number(image.imageIndex) === imageIndex)
+    const imageOcrMonths = monthsMentionedInText((ocrImage && ocrImage.lines || []).join('\n'), expectedMonth)
     const activityType = canonicalType(item && item.activityType)
     const rawValue = Number(item && item.rawValue)
     const rawUnit = normalizedUnit(item && item.rawUnit).slice(0, 20)
     const equivalentKm = activityEquivalentKm({ activityType, rawValue, rawUnit })
     const evidence = referencedOcrEvidence(ocr, imageIndex, item && (item.sourceLineIndexes || item.sourceLineIndex))
+    const activityMonth = /^\d{4}-\d{2}$/.test(String(item && item.activityMonth || '')) ? String(item.activityMonth) : null
+    const evidenceMonths = evidence ? monthsMentionedInText(evidence.text, expectedMonth) : []
+    const monthValid = activityMonth
+      ? activityMonth === expectedMonth && (!imageOcrMonths.length || (
+        imageOcrMonths.includes(expectedMonth) && (imageOcrMonths.length === 1 || evidenceMonths.includes(expectedMonth))
+      ))
+      : imageOcrMonths.length === 0
     return {
       activityType,
+      activityMonth,
       rawValue: Number.isFinite(rawValue) && rawValue >= 0 ? rawValue : null,
       rawUnit,
       equivalentKm,
@@ -152,27 +175,33 @@ function normalizeActivities(value, imageCount, ocr) {
       evidenceLineIndexes: evidence ? evidence.indexes : [],
       evidence: evidence ? evidence.text.slice(0, 180) : '',
       unitValid: isValidActivityUnit(activityType, rawUnit),
-      evidenceValid: Boolean(evidence && numericValueAppearsInText(rawValue, evidence.text))
+      evidenceValid: Boolean(evidence && numericValueAppearsInText(rawValue, evidence.text)),
+      monthValid
     }
   }).filter(item => {
-    const valid = item.rawValue !== null && item.unitValid && item.evidenceValid
+    const valid = item.rawValue !== null && item.unitValid && item.evidenceValid && item.monthValid
     if (!valid) rejectedCount += 1
+    if (!item.monthValid) monthRejectedCount += 1
     return valid
-  }).map(({ unitValid, evidenceValid, ...item }) => item)
-  return { activities, rejectedCount }
+  }).map(({ unitValid, evidenceValid, monthValid, ...item }) => item)
+  return { activities, rejectedCount, monthRejectedCount }
 }
 
 function parseJudgementContent(content, imageCount, expectedMonth, ocr) {
   const parsed = parseStrictJson(content, '数据判断模型')
-  const normalized = normalizeActivities(parsed.activities, imageCount, ocr)
+  const normalized = normalizeActivities(parsed.activities, imageCount, ocr, expectedMonth)
   const activities = normalized.activities
-  if (!activities.length) throw new Error('截图中未识别到可换算的运动数据')
+  if (!activities.length) {
+    if (normalized.monthRejectedCount) throw new Error(`截图中未识别到属于 ${expectedMonth} 的运动数据`)
+    throw new Error('截图中未识别到可换算的运动数据')
+  }
   const hasCustomActivity = activities.some(item => item.equivalentKm === null)
   const equivalentKm = hasCustomActivity ? null : round(activities.reduce((sum, item) => sum + item.equivalentKm, 0))
   const confidence = Number(parsed.confidence)
   const screenshotMonth = /^\d{4}-\d{2}$/.test(String(parsed.screenshotMonth || '')) ? parsed.screenshotMonth : null
   const monthMismatch = Boolean(screenshotMonth && screenshotMonth !== expectedMonth)
   const notes = Array.isArray(parsed.notes) ? parsed.notes.map(item => String(item).slice(0, 120)).slice(0, 5) : []
+  if (normalized.monthRejectedCount) notes.push(`有 ${normalized.monthRejectedCount} 项不属于 ${expectedMonth}，已自动排除`)
   if (normalized.rejectedCount) notes.push(`有 ${normalized.rejectedCount} 项判断无法在 OCR 原文中验证，已自动排除`)
   if (monthMismatch) notes.push(`截图月份 ${screenshotMonth} 与应提交月份 ${expectedMonth} 不一致`)
   return {
@@ -184,6 +213,22 @@ function parseJudgementContent(content, imageCount, expectedMonth, ocr) {
     needsReview: Boolean(parsed.needsReview) || imageCount > 1 || hasCustomActivity || equivalentKm === null || normalized.rejectedCount > 0 || monthMismatch,
     notes: notes.slice(0, 5)
   }
+}
+
+function judgementPromptFor(indexedOcr, imageCount, expectedMonth) {
+  return `你是东成西就跑团的运动数据判断器。你只能根据下面提供的 OCR 文字判断，不得读取图片，不得创造 OCR 中不存在的数字。目标月份是 ${expectedMonth}。
+
+必须严格按以下优先级判断：
+1. 先锁定目标月份 ${expectedMonth}。若 OCR 同时出现其他月份（例如上月、前月、历史月份），其他月份的数据一律忽略，不得输出。每项活动都填写 activityMonth；OCR 有月份或日期时，sourceLineIndexes 必须同时引用月份/日期上下文和运动数值。
+2. 对目标月份的同一种运动，优先寻找“累计”“本月累计”“月度总计”“总距离”“总里程”或等义的月度汇总。存在月度汇总时，只输出汇总，不得再输出其下方单次、分段或按天明细。
+3. 只有确实找不到该运动的月度汇总时，才把整张截图视为一次单次运动。每张截图最多输出一项，只取该次运动页面明确显示的“总距离”“距离”“总次数”或“累计爬升”；不得把圈数、分段、每公里、按天或其他明细自主相加。若截图只是多次运动列表且没有任何单次总量，不要计算，设 needsReview=true。不得把月度汇总与组成它的单次记录同时计入。
+4. 卡路里/kcal/大卡、步数、时长、配速、心率、排名和目标值永远不得计入。不同截图疑似重复展示同一份汇总或同一次运动时不得重复输出，并设 needsReview=true。
+
+支持 running、cycling、swimming、jump_rope、elevation；无法明确判断时不要输出。rawValue 必须是所引用 OCR 行中逐字存在的数字，rawUnit 必须来自所引用 OCR 行。sourceLineIndexes 填写支撑判断的 1 至 4 个 OCR 行号。不要计算等效跑量。
+
+OCR 原文：${JSON.stringify(indexedOcr)}
+
+只输出 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${imageCount},"sourceLineIndexes":[1],"activityMonth":"YYYY-MM或null","activityType":"running|cycling|swimming|jump_rope|elevation","rawValue":数字,"rawUnit":"km|m|count"}],"confidence":0到1,"needsReview":true或false,"notes":["判断说明"]}`
 }
 
 function reviewedActivitiesFor(activities, requestedReviews) {
@@ -276,7 +321,7 @@ async function recognizeImages(fileIds, expectedMonth) {
         lines: image.lines.map((text, index) => ({ lineIndex: index + 1, text }))
       }))
     }
-    const judgementPrompt = `你是东成西就跑团的运动数据判断器。你只能根据下面提供的 OCR 文字判断，不得读取图片，不得创造 OCR 中不存在的数字。目标月份是 ${expectedMonth}。\n\n判断规则：每张截图只选择明确标注为“累计”“本月累计”“月度总计”“总距离”“总里程”或等义字段的运动总量。若同图同时有总量和单次、分段、按天明细，只选总量。卡路里/kcal/大卡、步数、时长、配速、心率、排名和目标值不得计入。不同截图疑似为同一个月同一运动总量时不得重复计入，应设 needsReview=true。支持 running、cycling、swimming、jump_rope、elevation；无法明确判断时不要输出该项。rawValue 必须是所引用 OCR 行中逐字存在的数字，rawUnit 必须来自所引用 OCR 行。sourceLineIndexes 填写支撑该判断的 1 至 4 个 OCR 行号。不要计算等效跑量。\n\nOCR 原文：${JSON.stringify(indexedOcr)}\n\n只输出 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${fileIds.length},"sourceLineIndexes":[1],"activityType":"running|cycling|swimming|jump_rope|elevation","rawValue":数字,"rawUnit":"km|m|count"}],"confidence":0到1,"needsReview":true或false,"notes":["判断说明"]}`
+    const judgementPrompt = judgementPromptFor(indexedOcr, fileIds.length, expectedMonth)
     const judgementRequestBody = JSON.stringify({
       model: JUDGEMENT_MODEL,
       temperature: 0,
@@ -314,7 +359,7 @@ async function judgeStoredOcr(ocr, imageCount, expectedMonth) {
       lines: image.lines.map((text, index) => ({ lineIndex: index + 1, text }))
     }))
   }
-  const judgementPrompt = `你是东成西就跑团的运动数据判断器。你只能根据下面提供的 OCR 文字判断，不得读取图片，不得创造 OCR 中不存在的数字。目标月份是 ${expectedMonth}。\n\n判断规则：每张截图只选择明确标注为“累计”“本月累计”“月度总计”“总距离”“总里程”或等义字段的运动总量。若同图同时有总量和单次、分段、按天明细，只选总量。卡路里/kcal/大卡、步数、时长、配速、心率、排名和目标值不得计入。不同截图疑似为同一个月同一运动总量时不得重复计入，应设 needsReview=true。支持 running、cycling、swimming、jump_rope、elevation；无法明确判断时不要输出该项。rawValue 必须是所引用 OCR 行中逐字存在的数字，rawUnit 必须来自所引用 OCR 行。sourceLineIndexes 填写支撑该判断的 1 至 4 个 OCR 行号。不要计算等效跑量。\n\nOCR 原文：${JSON.stringify(indexedOcr)}\n\n只输出 JSON：{"sourceApp":"","screenshotMonth":"YYYY-MM或null","activities":[{"imageIndex":1到${imageCount},"sourceLineIndexes":[1],"activityType":"running|cycling|swimming|jump_rope|elevation","rawValue":数字,"rawUnit":"km|m|count"}],"confidence":0到1,"needsReview":true或false,"notes":["判断说明"]}`
+  const judgementPrompt = judgementPromptFor(indexedOcr, imageCount, expectedMonth)
   const requestBody = JSON.stringify({
     model: JUDGEMENT_MODEL,
     temperature: 0,
