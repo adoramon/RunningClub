@@ -1,0 +1,21 @@
+{
+  "version": "2.0",
+  "envId": "cloud1-d3gu11p800a6f5c2a",
+  "functions": [
+    {
+      "name": "cleanup_activity_evidence",
+      "timeout": 60,
+      "triggers": [
+        {
+          "name": "daily-activity-evidence-cleanup",
+          "type": "timer",
+          "config": "0 30 3 * * * *"
+        }
+      ]
+    },
+    {
+      "name": "review_activity_submissions",
+      "timeout": 60
+    }
+  ]
+}

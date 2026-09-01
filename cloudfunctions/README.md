@@ -17,7 +17,7 @@
 - `review_activity_submissions` 在管理员作废提交时，立即删除该记录关联的云端截图。
 - `cleanup_activity_evidence` 每天北京时间 03:30 清理超过最近三个提交月份的截图，只清空文件引用，不删除结构化跑量、识别、审核和结算数据。
 
-部署 `cleanup_activity_evidence` 后需将函数超时设为 60 秒，并上传其 `config.json` 中的定时触发器。触发器只需配置一次；后续普通代码更新不会改变保留周期。
+部署 `cleanup_activity_evidence` 后需将函数超时设为 60 秒。新版微信开发者工具和云开发控制台可能只读展示触发器，此时使用项目根目录 `cloudbaserc.json` 与官方命令 `tcb fn trigger create cleanup_activity_evidence -e cloud1-d3gu11p800a6f5c2a --yes` 创建。触发器只需配置一次；后续普通代码更新不会改变保留周期。
 
 ## 截图识别函数
 
