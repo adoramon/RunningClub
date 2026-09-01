@@ -154,6 +154,7 @@ function normalizeActivities(value, imageCount, ocr, expectedMonth) {
     const ocrImage = (ocr.images || []).find(image => Number(image.imageIndex) === imageIndex)
     const imageOcrMonths = monthsMentionedInText((ocrImage && ocrImage.lines || []).join('\n'), expectedMonth)
     const activityType = canonicalType(item && item.activityType)
+    const imageText = (ocrImage && ocrImage.lines || []).join(' ')
     const rawValue = Number(item && item.rawValue)
     const rawUnit = normalizedUnit(item && item.rawUnit).slice(0, 20)
     const equivalentKm = activityEquivalentKm({ activityType, rawValue, rawUnit })
@@ -165,6 +166,12 @@ function normalizeActivities(value, imageCount, ocr, expectedMonth) {
         imageOcrMonths.includes(expectedMonth) && (imageOcrMonths.length === 1 || evidenceMonths.includes(expectedMonth))
       ))
       : imageOcrMonths.length === 0
+    const hikingImage = /徒步|登山|爬山|hiking|trekking|山地活动/i.test(imageText)
+    const elevationEvidence = Boolean(evidence && /爬升|海拔增益|累计上升|总上升|上升高度|elevation\s*gain|ascent/i.test(evidence.text))
+    const explicitRunningEvidence = Boolean(evidence && /跑步|running|跑步机/i.test(evidence.text))
+    const semanticValid = activityType === 'elevation'
+      ? elevationEvidence
+      : !(activityType === 'running' && hikingImage && !explicitRunningEvidence)
     return {
       activityType,
       activityMonth,
@@ -176,14 +183,15 @@ function normalizeActivities(value, imageCount, ocr, expectedMonth) {
       evidence: evidence ? evidence.text.slice(0, 180) : '',
       unitValid: isValidActivityUnit(activityType, rawUnit),
       evidenceValid: Boolean(evidence && numericValueAppearsInText(rawValue, evidence.text)),
-      monthValid
+      monthValid,
+      semanticValid
     }
   }).filter(item => {
-    const valid = item.rawValue !== null && item.unitValid && item.evidenceValid && item.monthValid
+    const valid = item.rawValue !== null && item.unitValid && item.evidenceValid && item.monthValid && item.semanticValid
     if (!valid) rejectedCount += 1
     if (!item.monthValid) monthRejectedCount += 1
     return valid
-  }).map(({ unitValid, evidenceValid, monthValid, ...item }) => item)
+  }).map(({ unitValid, evidenceValid, monthValid, semanticValid, ...item }) => item)
   return { activities, rejectedCount, monthRejectedCount }
 }
 
@@ -220,9 +228,10 @@ function judgementPromptFor(indexedOcr, imageCount, expectedMonth) {
 
 必须严格按以下优先级判断：
 1. 先锁定目标月份 ${expectedMonth}。若 OCR 同时出现其他月份（例如上月、前月、历史月份），其他月份的数据一律忽略，不得输出。每项活动都填写 activityMonth；OCR 有月份或日期时，sourceLineIndexes 必须同时引用月份/日期上下文和运动数值。
-2. 对目标月份的同一种运动，优先寻找“累计”“本月累计”“月度总计”“总距离”“总里程”或等义的月度汇总。存在月度汇总时，只输出汇总，不得再输出其下方单次、分段或按天明细。
-3. 只有确实找不到该运动的月度汇总时，才把整张截图视为一次单次运动。每张截图最多输出一项，只取该次运动页面明确显示的“总距离”“距离”“总次数”或“累计爬升”；不得把圈数、分段、每公里、按天或其他明细自主相加。若截图只是多次运动列表且没有任何单次总量，不要计算，设 needsReview=true。不得把月度汇总与组成它的单次记录同时计入。
-4. 卡路里/kcal/大卡、步数、时长、配速、心率、排名和目标值永远不得计入。不同截图疑似重复展示同一份汇总或同一次运动时不得重复输出，并设 needsReview=true。
+2. 先判断运动类型。若截图属于登山、徒步、爬山、Hiking、Trekking 或同类山地活动，只提取明确标注为“累计爬升”“总爬升”“爬升高度”“海拔增益”“累计上升”或等义字段的米数，activityType 必须为 elevation、rawUnit 必须为 m。路线距离不得当作 running，当前海拔、最高海拔、最低海拔也不得当作爬升。没有明确爬升总量时不要用路线距离替代，并设 needsReview=true。
+3. 对目标月份的同一种运动，优先寻找“累计”“本月累计”“月度总计”“总距离”“总里程”或等义的月度汇总。存在月度汇总时，只输出汇总，不得再输出其下方单次、分段或按天明细；登山徒步仍按上一条只取爬升。
+4. 只有确实找不到该运动的月度汇总时，才把整张截图视为一次单次运动。每张截图最多输出一项，只取该次运动页面明确显示的“总距离”“距离”“总次数”或“累计爬升”；不得把圈数、分段、每公里、按天或其他明细自主相加。若截图只是多次运动列表且没有任何单次总量，不要计算，设 needsReview=true。不得把月度汇总与组成它的单次记录同时计入。
+5. 卡路里/kcal/大卡、步数、时长、配速、心率、排名和目标值永远不得计入。不同截图疑似重复展示同一份汇总或同一次运动时不得重复输出，并设 needsReview=true。
 
 支持 running、cycling、swimming、jump_rope、elevation；无法明确判断时不要输出。rawValue 必须是所引用 OCR 行中逐字存在的数字，rawUnit 必须来自所引用 OCR 行。sourceLineIndexes 填写支撑判断的 1 至 4 个 OCR 行号。不要计算等效跑量。
 
