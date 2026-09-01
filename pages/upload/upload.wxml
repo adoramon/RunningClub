@@ -26,8 +26,16 @@
   </view>
 
   <view wx:if="{{submission && submission.reviewStatus === 'pending_admin_review'}}" class="card status-card"><view class="status-main"><view class="status-icon">✓</view><view><view class="status-title">已提交管理员审核</view><view class="status-copy">本次确认计入 {{submission.memberConfirmedEquivalentKm}} km。审核通过后才会进入月度结算。</view></view></view><button class="withdraw-submission-btn" loading="{{loading}}" bindtap="withdrawSubmission">作废本次提交并重新上传</button></view>
-  <view wx:if="{{submission && submission.reviewStatus === 'recognition_failed'}}" class="error-hint">{{submission.recognition.error || '截图暂未识别成功，请更换清晰截图重试。'}}</view>
+  <view wx:if="{{recognitionErrorText}}" class="error-hint">{{recognitionErrorText}}</view>
   <view wx:if="{{submission && submission.reviewStatus === 'cancelled'}}" class="cancelled-hint">上一次识别已取消，请重新选择需要汇总的截图。</view>
   <view wx:if="{{submission && submission.reviewStatus === 'withdrawn'}}" class="voided-hint">上一次待审核提交已由你作废，请重新选择截图提交。</view>
   <view wx:if="{{submission && submission.reviewStatus === 'voided'}}" class="voided-hint">上一次提交已被管理员作废：{{submission.adminVoidReason || '不符合审核要求'}}。请核对截图后重新提交。</view>
+
+  <view wx:if="{{recognizing}}" class="recognition-mask">
+    <view class="recognition-dialog">
+      <view class="recognition-spinner"></view>
+      <view class="recognition-loading-title">正在调用不咋地的模型，请稍安勿躁</view>
+      <view class="recognition-loading-copy">正在逐张读取截图并分析运动量，请不要退出当前页面。</view>
+    </view>
+  </view>
 </view>

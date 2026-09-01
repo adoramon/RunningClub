@@ -58,3 +58,9 @@
 .error-hint { margin-top:20rpx; color:#B24F35; font-size:22rpx; line-height:1.5; }
 .cancelled-hint { margin-top:20rpx; color:#8A753C; font-size:22rpx; line-height:1.5; }
 .voided-hint { margin-top:20rpx; padding:16rpx; border-radius:12rpx; background:#FFF1EE; color:#A64A3A; font-size:22rpx; line-height:1.5; }
+.recognition-mask { position:fixed; z-index:999; top:0; right:0; bottom:0; left:0; display:flex; align-items:center; justify-content:center; padding:44rpx; background:rgba(18, 42, 31, .46); }
+.recognition-dialog { width:100%; padding:48rpx 34rpx 40rpx; border-radius:28rpx; background:#FFFEFA; box-shadow:0 24rpx 70rpx rgba(16, 50, 35, .24); text-align:center; }
+.recognition-spinner { width:64rpx; height:64rpx; margin:0 auto 28rpx; border:8rpx solid #DDEDE3; border-top-color:#1F7655; border-radius:50%; animation:recognition-spin .85s linear infinite; }
+.recognition-loading-title { color:#245E45; font-size:30rpx; font-weight:900; line-height:1.45; }
+.recognition-loading-copy { margin-top:16rpx; color:#7B8A81; font-size:22rpx; line-height:1.55; }
+@keyframes recognition-spin { to { transform:rotate(360deg); } }

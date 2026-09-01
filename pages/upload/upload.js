@@ -31,10 +31,11 @@ function clientUnitValid(activity) {
 }
 
 Page({
-  data: { month: previousMonth(), images: [], submission: null, activities: [], reviewActivities: [], evidenceFiles: [], reviewTotalText: '0.00', loading: false },
+  data: { month: previousMonth(), images: [], submission: null, activities: [], reviewActivities: [], evidenceFiles: [], reviewTotalText: '0.00', recognitionErrorText: '', loading: false, recognizing: false },
   onShow() { this.loadSubmission() },
   async loadSubmission() {
     try {
+      this.setData({ recognitionErrorText: '' })
       const { submission } = await getActivitySubmission()
       if (!submission) return
       this.applySubmission(submission)
@@ -45,18 +46,17 @@ Page({
   },
   async resumeJudgement() {
     if (this.data.loading) return
-    this.setData({ loading: true })
-    wx.showLoading({ title: '正在分析跑量…', mask: true })
+    this.setData({ loading: true, recognizing: true, recognitionErrorText: '' })
     try {
       const { submission } = await judgeActivityScreenshot()
       this.applySubmission(submission)
       if (submission.recognitionStatus === 'recognized') wx.showToast({ title: '分析完成，请确认结果', icon: 'success' })
     } catch (error) {
       console.error('恢复跑量分析失败', error)
+      this.setData({ recognitionErrorText: '本次分析暂未完成，请稍后重试。' })
       wx.showToast({ title: '分析暂未完成，请稍后重试', icon: 'none' })
     } finally {
-      wx.hideLoading()
-      this.setData({ loading: false })
+      this.setData({ loading: false, recognizing: false })
     }
   },
   applySubmission(submission) {
@@ -89,7 +89,7 @@ Page({
         try { path = (await wx.compressImage({ src: path, quality: 80 })).tempFilePath } catch (_) {}
         return { path }
       }))
-      this.setData({ images })
+      this.setData({ images, recognitionErrorText: '' })
     } catch (_) {}
   },
   reviewTotalText(reviewActivities) {
@@ -113,8 +113,7 @@ Page({
   },
   async recognize() {
     if (!this.data.images.length) return wx.showToast({ title: '请先选择运动记录截图', icon: 'none' })
-    this.setData({ loading: true })
-    wx.showLoading({ title: '正在识别截图…', mask: true })
+    this.setData({ loading: true, recognizing: true, recognitionErrorText: '' })
     try {
       const uploaded = await Promise.all(this.data.images.map((image, index) => {
         const extension = (image.path.match(/\.([a-zA-Z0-9]+)(?:\?|$)/) || [])[1]
@@ -125,13 +124,17 @@ Page({
       const { submission } = await recognizeActivityScreenshots(uploaded.map(item => item.fileID))
       this.applySubmission(submission)
       if (submission.recognitionStatus === 'recognized') wx.showToast({ title: '识别完成，请确认结果', icon: 'success' })
-      else wx.showToast({ title: submission.recognition.error || '识别失败，请更换清晰截图', icon: 'none', duration: 3200 })
+      else {
+        const recognitionErrorText = (submission.recognition && submission.recognition.error) || '本次识别失败，请更换清晰截图。'
+        this.setData({ recognitionErrorText })
+        wx.showToast({ title: recognitionErrorText, icon: 'none', duration: 3200 })
+      }
     } catch (error) {
       console.error('识别运动截图失败', error)
+      this.setData({ recognitionErrorText: '本次截图识别失败，请稍后重试。' })
       wx.showToast({ title: '截图识别失败，请稍后重试', icon: 'none' })
     } finally {
-      wx.hideLoading()
-      this.setData({ loading: false })
+      this.setData({ loading: false, recognizing: false })
     }
   },
   async confirm() {
