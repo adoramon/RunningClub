@@ -1,5 +1,6 @@
 const https = require('https')
 const cloud = require('wx-server-sdk')
+const { deterministicMonthlySummary } = require('./monthly-summary')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -13,7 +14,7 @@ const OCR_MODEL = process.env.RUNNING_CLUB_AI_OCR_MODEL || process.env.RUNNING_C
 const JUDGEMENT_MODEL = process.env.RUNNING_CLUB_AI_JUDGEMENT_MODEL || 'local-premium'
 const OCR_TIMEOUT_MS = 30000
 const JUDGEMENT_TIMEOUT_MS = 18000
-const STANDALONE_JUDGEMENT_TIMEOUT_MS = 48000
+const STANDALONE_JUDGEMENT_TIMEOUT_MS = 54000
 const round = value => Math.round(value * 100) / 100
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 
@@ -193,9 +194,10 @@ function normalizeActivities(value, imageCount, ocr, expectedMonth) {
     const hikingImage = /徒步|登山|爬山|hiking|trekking|山地活动/i.test(imageText)
     const elevationEvidence = Boolean(evidence && /爬升|海拔增益|累计上升|总上升|上升高度|elevation\s*gain|ascent/i.test(evidence.text))
     const explicitRunningEvidence = Boolean(evidence && /跑步|running|跑步机/i.test(evidence.text))
+    const walkingEvidence = Boolean(evidence && /步行|健走|散步|walking|(^|\W)walk(\W|$)/i.test(evidence.text))
     const semanticValid = activityType === 'elevation'
-      ? elevationEvidence
-      : !(activityType === 'running' && hikingImage && !explicitRunningEvidence)
+      ? elevationEvidence && !walkingEvidence
+      : !walkingEvidence && !(activityType === 'running' && hikingImage && !explicitRunningEvidence)
     return {
       activityType,
       activityMonth,
@@ -256,6 +258,7 @@ function judgementPromptFor(indexedOcr, imageCount, expectedMonth) {
 3. 对目标月份的同一种运动，优先寻找“累计”“本月累计”“月度总计”“总距离”“总里程”或等义的月度汇总。存在月度汇总时，只输出汇总，不得再输出其下方单次、分段或按天明细；登山徒步仍按上一条只取爬升。
 4. 只有确实找不到该运动的月度汇总时，才把整张截图视为一次单次运动。每张截图最多输出一项，只取该次运动页面明确显示的“总距离”“距离”“总次数”或“累计爬升”；不得把圈数、分段、每公里、按天或其他明细自主相加。若截图只是多次运动列表且没有任何单次总量，不要计算，设 needsReview=true。不得把月度汇总与组成它的单次记录同时计入。
 5. 卡路里/kcal/大卡、步数、时长、配速、心率、排名和目标值永远不得计入。不同截图疑似重复展示同一份汇总或同一次运动时不得重复输出，并设 needsReview=true。
+6. 步行、健走、散步、Walking、Walk 不属于本跑团自动换算项目，必须完全忽略，绝不能映射为 running，也不能与骑行或其他运动相加。
 
 支持 running、cycling、swimming、jump_rope、elevation；无法明确判断时不要输出。rawValue 必须是所引用 OCR 行中逐字存在的数字，rawUnit 必须来自所引用 OCR 行。sourceLineIndexes 填写支撑判断的 1 至 4 个 OCR 行号。不要计算等效跑量。
 
@@ -526,6 +529,22 @@ exports.main = async (event = {}) => {
       } })
       return { submission: publicSubmission({ ...current, recognitionStatus: 'recognized', recognition }) }
     } catch (error) {
+      const fallbackActivities = deterministicMonthlySummary(current.ocr, month)
+      if (fallbackActivities.length) {
+        const suggestedEquivalentKm = round(fallbackActivities.reduce((sum, item) => sum + item.equivalentKm, 0))
+        const recognition = {
+          sourceApp: '', screenshotMonth: month, confidence: 0.9,
+          activities: fallbackActivities, suggestedEquivalentKm, needsReview: true,
+          notes: ['数据判断模型未及时返回，已按目标月份明确标注的月度汇总提取；步行已忽略，请重点核对。'],
+          provider: 'deterministic-monthly-summary-fallback', model: JUDGEMENT_MODEL,
+          ocrModel: current.ocrModel || OCR_MODEL, judgementModel: JUDGEMENT_MODEL,
+          ocr: current.ocr, rawResponse: String(error && error.rawResponse || '').slice(0, 8000)
+        }
+        await records.doc(recordId).update({ data: {
+          recognitionStatus: 'recognized', recognition, recognizedAt: db.serverDate(), updatedAt: db.serverDate()
+        } })
+        return { submission: publicSubmission({ ...current, recognitionStatus: 'recognized', recognition }) }
+      }
       const recognition = { error: safeError(error), activities: [], notes: [], ocr: current.ocr }
       if (error && error.rawResponse) recognition.rawResponse = error.rawResponse
       await records.doc(recordId).update({ data: {
