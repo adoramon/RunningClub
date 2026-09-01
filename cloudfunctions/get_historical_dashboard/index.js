@@ -1,8 +1,9 @@
 const cloud = require('wx-server-sdk')
+const { approvedActivityKm, overlayApprovedActivities, approvedActivitiesRevision } = require('./lifetime')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
-let lifetimeCache = { expiresAt: 0, value: null }
+let lifetimeCache = { expiresAt: 0, approvedRevision: '', value: null }
 const ADMIN_MEMBER_IDS = new Set(['legacy-member-001', 'legacy-member-023'])
 
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
@@ -133,20 +134,8 @@ function buildRecentTrend(joinedHistory) {
   })
 }
 
-function approvedActivityKm(record) {
-  if (!record || record.reviewStatus !== 'approved') return null
-  const value = record.adminApprovedEquivalentKm === undefined ? record.memberConfirmedEquivalentKm : record.adminApprovedEquivalentKm
-  return isNumber(value) ? round(value) : null
-}
-
 function mergeFinalizedMemberRecords(rawRecords, activityRecords = [], settlements = []) {
-  const recordsByMonth = new Map(rawRecords.map(record => [record.month, { ...record }]))
-  activityRecords.forEach(activity => {
-    const equivalentKm = approvedActivityKm(activity)
-    if (!activity.month || !isNumber(equivalentKm)) return
-    const current = recordsByMonth.get(activity.month) || { month: activity.month, legacyMemberKey: activity.historicalMemberId }
-    recordsByMonth.set(activity.month, { ...current, equivalentKm, approvedActivityId: activity._id })
-  })
+  const recordsByMonth = new Map(overlayApprovedActivities(rawRecords, activityRecords).map(record => [record.month, record]))
   settlements.forEach(settlement => {
     if (!settlement.month || !['fund_paid', 'leave'].includes(settlement.status)) return
     const current = recordsByMonth.get(settlement.month) || { month: settlement.month, legacyMemberKey: settlement.historicalMemberId }
@@ -221,15 +210,30 @@ function buildLifetimeStats(records) {
 }
 
 async function getLifetimeStats() {
-  if (lifetimeCache.value && Date.now() < lifetimeCache.expiresAt) return lifetimeCache.value
+  const approvedActivities = []
+  for (let offset = 0; ; offset += 100) {
+    const result = await db.collection('activity_records').where({ reviewStatus: 'approved' }).skip(offset).limit(100).get()
+    approvedActivities.push(...result.data)
+    if (result.data.length < 100) break
+  }
+  const approvedRevision = approvedActivitiesRevision(approvedActivities)
+  if (lifetimeCache.value && lifetimeCache.approvedRevision === approvedRevision && Date.now() < lifetimeCache.expiresAt) return lifetimeCache.value
+
   const membersResult = await db.collection('historical_members').limit(100).get()
+  const activitiesByMemberId = new Map()
+  approvedActivities.forEach(activity => {
+    if (!activity.historicalMemberId) return
+    const records = activitiesByMemberId.get(activity.historicalMemberId) || []
+    records.push(activity)
+    activitiesByMemberId.set(activity.historicalMemberId, records)
+  })
   const histories = await Promise.all(membersResult.data.map(async member => {
     const memberId = member.legacyMemberKey || member._id
     const result = await db.collection('historical_monthly_records').where({ legacyMemberKey: memberId }).orderBy('month', 'desc').limit(100).get()
-    return result.data
+    return deriveRecords(overlayApprovedActivities(result.data, activitiesByMemberId.get(memberId) || []))
   }))
-  const value = buildLifetimeStats(histories.flatMap(deriveRecords))
-  lifetimeCache = { value, expiresAt: Date.now() + 30 * 60 * 1000 }
+  const value = buildLifetimeStats(histories.flat())
+  lifetimeCache = { value, approvedRevision, expiresAt: Date.now() + 30 * 60 * 1000 }
   return value
 }
 
