@@ -168,7 +168,7 @@ Page({
       return
     }
     wx.showModal({
-      title: '作废本次提交？', content: '成员会看到作废原因，并可重新上传截图。原始截图会保留用于审计。',
+      title: '作废本次提交？', content: '成员会看到作废原因，并可重新上传截图。云端截图将立即删除且无法恢复。',
       confirmText: '确认作废', confirmColor: '#B64335',
       success: async result => {
         if (!result.confirm) return

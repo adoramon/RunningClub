@@ -31,6 +31,30 @@ function safeError(error) {
   return String(error && error.message ? error.message : error || '识别服务暂不可用').slice(0, 240)
 }
 
+function evidenceFileIdsFor(record) {
+  return [...new Set([
+    ...(Array.isArray(record && record.evidenceFileIds) ? record.evidenceFileIds : []),
+    ...(Array.isArray(record && record.previousEvidenceFileIds) ? record.previousEvidenceFileIds : []),
+    record && record.evidenceFileId
+  ].filter(fileId => String(fileId || '').startsWith('cloud://')))]
+}
+
+async function deleteEvidenceFiles(record) {
+  const fileList = evidenceFileIdsFor(record)
+  if (!fileList.length) return 0
+  const result = await cloud.deleteFile({ fileList })
+  const failed = (result.fileList || []).filter(item => Number(item.status) !== 0 && !/not\s*exist|nosuchkey|不存在/i.test(String(item.errMsg || '')))
+  if (failed.length) throw new Error('云端截图删除失败，请稍后重试')
+  return fileList.length
+}
+
+function clearedEvidenceData(reason) {
+  return {
+    evidenceFileId: '', evidenceFileIds: [], previousEvidenceFileIds: [],
+    evidencePurgedReason: reason, evidencePurgedAt: db.serverDate()
+  }
+}
+
 function imageMimeType(buffer) {
   if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))) return 'image/png'
   if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp'
@@ -458,10 +482,13 @@ exports.main = async (event = {}) => {
     if (!current || current.recognitionStatus !== 'recognized' || current.reviewStatus !== 'pending_member_confirmation') {
       throw new Error('当前没有可取消的识别结果')
     }
+    await deleteEvidenceFiles(current)
+    const clearedEvidence = clearedEvidenceData('member_cancelled')
     await records.doc(recordId).update({ data: {
-      recognitionStatus: 'cancelled', reviewStatus: 'cancelled', cancelledAt: db.serverDate(), updatedAt: db.serverDate()
+      recognitionStatus: 'cancelled', reviewStatus: 'cancelled', cancelledAt: db.serverDate(), updatedAt: db.serverDate(),
+      ...clearedEvidence
     } })
-    return { submission: publicSubmission({ ...current, recognitionStatus: 'cancelled', reviewStatus: 'cancelled' }) }
+    return { submission: publicSubmission({ ...current, ...clearedEvidence, recognitionStatus: 'cancelled', reviewStatus: 'cancelled' }) }
   }
 
   if (action === 'withdraw') {
@@ -470,12 +497,14 @@ exports.main = async (event = {}) => {
       throw new Error('当前提交已不在等待审核状态，无法作废')
     }
     const withdrawnEvaluation = current.memberEvaluation || null
+    await deleteEvidenceFiles(current)
+    const clearedEvidence = clearedEvidenceData('member_withdrawn')
     await records.doc(recordId).update({ data: {
       reviewStatus: 'withdrawn', memberWithdrawnAt: db.serverDate(),
       memberWithdrawnRevision: Number(current.revision || 0),
-      withdrawnEvaluation, memberEvaluation: null, updatedAt: db.serverDate()
+      withdrawnEvaluation, memberEvaluation: null, updatedAt: db.serverDate(), ...clearedEvidence
     } })
-    return { submission: publicSubmission({ ...current, reviewStatus: 'withdrawn', memberEvaluation: null }) }
+    return { submission: publicSubmission({ ...current, ...clearedEvidence, reviewStatus: 'withdrawn', memberEvaluation: null }) }
   }
 
   if (action === 'judge') {

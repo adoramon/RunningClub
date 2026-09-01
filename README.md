@@ -2,7 +2,7 @@
 
 东成西就跑团的原生微信小程序。它服务于一个封闭跑团：成员先用历史艺名完成唯一认领，再查看跑量、提交上月运动截图、接受管理员审核，并持续公开公积金收支。
 
-当前代码对应 **v1.3.6 候选版**，用于上传微信体验版和提交审核。
+当前代码对应 **v1.3.7 候选版**，用于上传微信体验版和提交审核。
 
 ## 已实现能力
 
@@ -26,6 +26,7 @@
 - 成员每次可提交 1 至 3 张上一个完整月的运动截图。
 - 云函数调用视觉模型识别跑步、骑行、游泳、跳绳和爬升；服务端统一换算为等效跑量，成员可逐项核对、修改或取消计入。
 - 管理员可查看原截图、修正数据、通过或作废提交；截图通过云函数换取短期访问链接，任一管理员均可复核；任一管理员通过即生效。
+- 成员取消识别、撤回待审核提交或管理员作废时，相关云端截图立即删除且不可恢复；有效历史截图仅保留最近三个提交月份，跑量、审核状态等结构化记录长期保留。
 - 对上月未提交、未达标的成员，管理员可设为提前请假或确认已缴公积金；应缴金额由服务端按连续未达标次数计算。
 - 成员确认截图后，系统一次性生成并保存阶段性运动评价；重复浏览不会重复调用模型。
 
@@ -51,7 +52,7 @@
 - 数据：历史成员、历史月度记录、用户绑定、截图提交、月度结算、公积金流水与月度评价。
 - AI：视觉模型仅用于用户主动上传的运动截图识别；文本模型仅接收结构化跑量摘要生成评价。密钥仅存云函数环境变量，不进入客户端或 Git。
 
-核心云函数包括：`get_current_user`、`claim_historical_identity`、`get_historical_dashboard`、`ocr_activity_screenshot`、`submit_activity_screenshot`、`review_activity_submissions`、`generate_monthly_evaluation`、`manage_fund_ledger` 和 `claim_review_access`。
+核心云函数包括：`get_current_user`、`claim_historical_identity`、`get_historical_dashboard`、`ocr_activity_screenshot`、`submit_activity_screenshot`、`review_activity_submissions`、`cleanup_activity_evidence`、`generate_monthly_evaluation`、`manage_fund_ledger` 和 `claim_review_access`。
 
 ## 本地开发与部署
 

@@ -153,7 +153,7 @@ Page({
   cancelRecognition() {
     wx.showModal({
       title: '取消本次识别？',
-      content: '取消后不会提交管理员审核，你可以重新选择截图。已上传的凭证会保留用于审计。',
+      content: '取消后不会提交管理员审核，云端截图将立即删除且无法恢复。你可以重新选择截图。',
       confirmText: '确认取消',
       confirmColor: '#B24F35',
       success: async result => {
@@ -176,7 +176,7 @@ Page({
   withdrawSubmission() {
     wx.showModal({
       title: '作废本次提交？',
-      content: '作废后管理员将无法审核当前提交，你可以重新选择截图。原始截图会保留用于审计。',
+      content: '作废后管理员将无法审核当前提交，云端截图将立即删除且无法恢复。你可以重新选择截图。',
       confirmText: '确认作废',
       confirmColor: '#B24F35',
       success: async result => {

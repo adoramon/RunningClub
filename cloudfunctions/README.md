@@ -11,6 +11,14 @@
 
 后续云函数会继续以同样的方式部署。
 
+## 截图保留与清理
+
+- `submit_activity_screenshot` 在成员取消识别或撤回待审核提交时，立即删除该记录关联的云端截图。
+- `review_activity_submissions` 在管理员作废提交时，立即删除该记录关联的云端截图。
+- `cleanup_activity_evidence` 每天北京时间 03:30 清理超过最近三个提交月份的截图，只清空文件引用，不删除结构化跑量、识别、审核和结算数据。
+
+部署 `cleanup_activity_evidence` 后需将函数超时设为 60 秒，并上传其 `config.json` 中的定时触发器。触发器只需配置一次；后续普通代码更新不会改变保留周期。
+
 ## 截图识别函数
 
 截图识别由两个函数串联：`ocr_activity_screenshot` 调用 `local-vsr` 抄录原文，多图时每张截图分别调用一次并保存分片；全部分片完成后，客户端再调用 `submit_activity_screenshot`，由后者调用 `local-premium` 统一判断运动总量并在服务端换算。每张 OCR 调用和最终判断都拥有独立的 60 秒云函数窗口。部署新 OCR 函数后，必须在其 CloudBase 配置中设置与现有识别函数相同的 `RUNNING_CLUB_AI_API_KEY`；密钥不能写入源码或小程序端。模型协议、换算规则和完整环境变量说明见 [../docs/ai/screenshot-recognition.md](../docs/ai/screenshot-recognition.md)。

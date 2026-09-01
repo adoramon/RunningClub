@@ -6,6 +6,21 @@ const ADMIN_MEMBER_IDS = new Set(['legacy-member-001', 'legacy-member-023'])
 const isNumber = value => typeof value === 'number' && Number.isFinite(value)
 
 function round(value) { return Math.round(Number(value || 0) * 100) / 100 }
+function evidenceFileIdsFor(record) {
+  return [...new Set([
+    ...(Array.isArray(record && record.evidenceFileIds) ? record.evidenceFileIds : []),
+    ...(Array.isArray(record && record.previousEvidenceFileIds) ? record.previousEvidenceFileIds : []),
+    record && record.evidenceFileId
+  ].filter(fileId => String(fileId || '').startsWith('cloud://')))]
+}
+async function deleteEvidenceFiles(record) {
+  const fileList = evidenceFileIdsFor(record)
+  if (!fileList.length) return 0
+  const result = await cloud.deleteFile({ fileList })
+  const failed = (result.fileList || []).filter(item => Number(item.status) !== 0 && !/not\s*exist|nosuchkey|不存在/i.test(String(item.errMsg || '')))
+  if (failed.length) throw new Error('云端截图删除失败，请稍后重试')
+  return fileList.length
+}
 async function attachTemporaryAvatarUrls(items) {
   const fileIds = [...new Set(items.map(item => item.avatarFileId).filter(Boolean))]
   if (!fileIds.length) return items
@@ -303,9 +318,12 @@ exports.main = async (event = {}) => {
     if (!current) throw new Error('未找到审核记录')
     if (current.reviewStatus !== 'pending_admin_review') throw new Error('该记录当前不可作废')
     const voidedByAlias = admin.historicalMemberId === 'legacy-member-023' ? '高翔' : '元'
+    await deleteEvidenceFiles(current)
     await records.doc(submissionId).update({ data: {
       reviewStatus: 'voided', recognitionStatus: 'voided', adminVoidedAt: db.serverDate(),
       adminVoidedByUserId: admin._id, adminVoidedByAlias: voidedByAlias, adminVoidReason: voidReason,
+      evidenceFileId: '', evidenceFileIds: [], previousEvidenceFileIds: [],
+      evidencePurgedReason: 'admin_voided', evidencePurgedAt: db.serverDate(),
       updatedAt: db.serverDate()
     } })
     return { voided: true }
