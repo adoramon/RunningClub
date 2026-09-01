@@ -120,29 +120,104 @@ async function recognizeText(fileIds) {
   }
 }
 
-exports.main = async (event = {}) => {
-  const user = await currentUser()
-  const month = previousMonth()
-  const recordId = recordIdFor(user._id, month)
+function evidenceFileIdsFrom(event) {
   const suppliedFileIds = Array.isArray(event.evidenceFileIds) ? event.evidenceFileIds : [event.evidenceFileId]
   const evidenceFileIds = [...new Set(suppliedFileIds.map(item => String(item || '')).filter(Boolean))]
   if (!evidenceFileIds.length || evidenceFileIds.length > MAX_SCREENSHOT_COUNT || evidenceFileIds.some(fileId => !fileId.startsWith('cloud://'))) {
     throw new Error(`请上传 1 至 ${MAX_SCREENSHOT_COUNT} 张有效的运动截图`)
   }
-  const records = db.collection('activity_records')
+  return evidenceFileIds
+}
+
+async function startBatch(records, recordId, user, month, evidenceFileIds) {
   let previous = null
   try { previous = (await records.doc(recordId).get()).data } catch (_) {}
   if (previous && ['pending_admin_review', 'approved'].includes(previous.reviewStatus)) throw new Error('当前月份已有不可覆盖的提交记录')
   const previousEvidenceFileIds = Array.isArray(previous && previous.evidenceFileIds) ? previous.evidenceFileIds : []
   const oldEvidenceFileIds = Array.isArray(previous && previous.previousEvidenceFileIds) ? previous.previousEvidenceFileIds : []
+  const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
   const baseRecord = {
     submissionKey: recordId, userId: user._id, historicalMemberId: user.historicalMemberId, month,
-    evidenceFileId: evidenceFileIds[0], evidenceFileIds,
+    evidenceFileId: evidenceFileIds[0], evidenceFileIds, ocrBatchId: batchId,
     previousEvidenceFileIds: [...new Set([...oldEvidenceFileIds, ...previousEvidenceFileIds])].filter(fileId => !evidenceFileIds.includes(fileId)).slice(-12),
     recognitionStatus: 'ocr_analyzing', reviewStatus: 'pending_member_confirmation',
+    ocrPart1: null, ocrPart2: null, ocrPart3: null,
     updatedAt: db.serverDate(), submittedAt: db.serverDate(), revision: Number(previous && previous.revision || 0) + 1
   }
   await records.doc(recordId).set({ data: baseRecord })
+  return { batchId, baseRecord }
+}
+
+exports.main = async (event = {}) => {
+  const user = await currentUser()
+  const month = previousMonth()
+  const recordId = recordIdFor(user._id, month)
+  const records = db.collection('activity_records')
+  const action = String(event.action || 'recognize')
+
+  if (action === 'start') {
+    const evidenceFileIds = evidenceFileIdsFrom(event)
+    const started = await startBatch(records, recordId, user, month, evidenceFileIds)
+    return { batchId: started.batchId, month, evidenceCount: evidenceFileIds.length }
+  }
+
+  if (action === 'recognize_one') {
+    const batchId = String(event.batchId || '')
+    const imageIndex = Number(event.imageIndex)
+    const evidenceFileId = String(event.evidenceFileId || '')
+    const current = (await records.doc(recordId).get()).data
+    if (!current || current.ocrBatchId !== batchId || current.recognitionStatus !== 'ocr_analyzing') throw new Error('本批截图识别任务已失效')
+    if (!Number.isInteger(imageIndex) || imageIndex < 1 || imageIndex > current.evidenceFileIds.length || current.evidenceFileIds[imageIndex - 1] !== evidenceFileId) {
+      throw new Error('截图序号或文件不匹配')
+    }
+    let part
+    try {
+      const result = await recognizeText([evidenceFileId])
+      part = {
+        status: 'completed', image: { ...result.ocr.images[0], imageIndex }, notes: result.ocr.notes,
+        rawResponse: result.rawResponse, model: OCR_MODEL, completedAt: new Date().toISOString()
+      }
+    } catch (error) {
+      part = { status: 'failed', imageIndex, error: safeError(error), rawResponse: String(error && error.rawResponse || '').slice(0, 5000) }
+    }
+    const latest = (await records.doc(recordId).get()).data
+    if (!latest || latest.ocrBatchId !== batchId) return { ocrCompleted: false, superseded: true, imageIndex }
+    await records.doc(recordId).update({ data: { [`ocrPart${imageIndex}`]: part, updatedAt: db.serverDate() } })
+    return { ocrCompleted: part.status === 'completed', imageIndex, error: part.error || '' }
+  }
+
+  if (action === 'complete') {
+    const batchId = String(event.batchId || '')
+    const current = (await records.doc(recordId).get()).data
+    if (!current || current.ocrBatchId !== batchId) throw new Error('本批截图识别任务已失效')
+    const parts = current.evidenceFileIds.map((_, index) => current[`ocrPart${index + 1}`])
+    const failedIndexes = parts.map((part, index) => (!part || part.status !== 'completed') ? index + 1 : null).filter(Boolean)
+    if (failedIndexes.length) {
+      const partErrors = parts.map(part => part && part.error).filter(Boolean)
+      const error = `第 ${failedIndexes.join('、')} 张截图识别失败${partErrors.length ? `：${partErrors[0]}` : '，请重新提交'}`
+      const recognition = { error, activities: [], notes: [] }
+      await records.doc(recordId).update({ data: {
+        recognitionStatus: 'failed', recognition, reviewStatus: 'recognition_failed', updatedAt: db.serverDate()
+      } })
+      return { ocrCompleted: false, error }
+    }
+    const ocr = {
+      images: parts.map(part => part.image),
+      notes: parts.flatMap(part => Array.isArray(part.notes) ? part.notes : []).slice(0, 10)
+    }
+    const ocrRawResponse = JSON.stringify(parts.map(part => ({ imageIndex: part.image.imageIndex, response: part.rawResponse }))).slice(0, 12000)
+    await records.doc(recordId).update({ data: {
+      recognitionStatus: 'ocr_completed', ocr, ocrModel: OCR_MODEL,
+      ocrRawResponse, ocrCompletedAt: db.serverDate(), updatedAt: db.serverDate()
+    } })
+    return { ocrCompleted: true, month, evidenceCount: current.evidenceFileIds.length }
+  }
+
+  if (action !== 'recognize') throw new Error('不支持的截图识别操作')
+
+  // 兼容尚未升级的小程序体验版：旧客户端仍可整批调用，新客户端使用 start/recognize_one/complete。
+  const evidenceFileIds = evidenceFileIdsFrom(event)
+  await startBatch(records, recordId, user, month, evidenceFileIds)
   try {
     const result = await recognizeText(evidenceFileIds)
     await records.doc(recordId).update({ data: {

@@ -13,7 +13,7 @@
 
 ## 截图识别函数
 
-截图识别由两个函数串联：`ocr_activity_screenshot` 调用 `local-vsr` 抄录原文，完成后客户端再调用 `submit_activity_screenshot`，由后者调用 `local-premium` 判断运动总量并在服务端换算。两个函数的超时都设置为 60 秒。部署新 OCR 函数后，必须在其 CloudBase 配置中设置与现有识别函数相同的 `RUNNING_CLUB_AI_API_KEY`；密钥不能写入源码或小程序端。模型协议、换算规则和完整环境变量说明见 [../docs/ai/screenshot-recognition.md](../docs/ai/screenshot-recognition.md)。
+截图识别由两个函数串联：`ocr_activity_screenshot` 调用 `local-vsr` 抄录原文，多图时每张截图分别调用一次并保存分片；全部分片完成后，客户端再调用 `submit_activity_screenshot`，由后者调用 `local-premium` 统一判断运动总量并在服务端换算。每张 OCR 调用和最终判断都拥有独立的 60 秒云函数窗口。部署新 OCR 函数后，必须在其 CloudBase 配置中设置与现有识别函数相同的 `RUNNING_CLUB_AI_API_KEY`；密钥不能写入源码或小程序端。模型协议、换算规则和完整环境变量说明见 [../docs/ai/screenshot-recognition.md](../docs/ai/screenshot-recognition.md)。
 
 部署完成后，确认 `activity_records` 集合保持客户端不可读写。函数首次成功调用时会按“用户 + 月份”写入当前提交记录；管理员审核与结算功能将在后续阶段接入。
 

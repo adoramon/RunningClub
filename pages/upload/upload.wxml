@@ -1,7 +1,7 @@
 <view class="page">
   <view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">{{month}} · PROOF OF RUN</view></view>
   <view class="title"><text>提交上月</text><text>运动记录</text></view>
-  <view class="tip"><text>●</text> 上传月度截图，系统先识别原文，再分析并换算等效跑量。</view>
+  <view class="tip"><text>●</text> 上传月度截图，系统会逐张识别原文，再统一分析并换算等效跑量。</view>
 
   <view class="card form-card" wx:if="{{!submission || submission.reviewStatus === 'recognition_failed' || submission.reviewStatus === 'cancelled' || submission.reviewStatus === 'withdrawn' || submission.reviewStatus === 'voided'}}">
     <view class="field-label">上月运动记录截图 <text class="image-count">{{images.length}} / 3 张</text></view>

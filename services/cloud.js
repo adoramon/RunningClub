@@ -34,11 +34,23 @@ function getActivitySubmission() {
   return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'get' } }).then(result => result.result)
 }
 
-function recognizeActivityScreenshots(evidenceFileIds) {
-  return wx.cloud.callFunction({ name: 'ocr_activity_screenshot', data: { evidenceFileIds } }).then(result => {
-    if (!result.result || !result.result.ocrCompleted) return getActivitySubmission()
-    return judgeActivityScreenshot()
-  })
+async function recognizeActivityScreenshots(evidenceFileIds) {
+  const started = await wx.cloud.callFunction({ name: 'ocr_activity_screenshot', data: { action: 'start', evidenceFileIds } })
+  const batchId = started.result && started.result.batchId
+  if (!batchId) throw new Error('未能创建截图识别任务')
+  for (let index = 0; index < evidenceFileIds.length; index += 1) {
+    try {
+      await wx.cloud.callFunction({
+        name: 'ocr_activity_screenshot',
+        data: { action: 'recognize_one', batchId, imageIndex: index + 1, evidenceFileId: evidenceFileIds[index] }
+      })
+    } catch (error) {
+      console.warn(`第 ${index + 1} 张截图 OCR 调用失败`, error)
+    }
+  }
+  const completed = await wx.cloud.callFunction({ name: 'ocr_activity_screenshot', data: { action: 'complete', batchId } })
+  if (!completed.result || !completed.result.ocrCompleted) return getActivitySubmission()
+  return judgeActivityScreenshot()
 }
 
 function judgeActivityScreenshot() {
