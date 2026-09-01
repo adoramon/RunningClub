@@ -260,12 +260,14 @@ exports.main = async (event = {}) => {
     const [profile] = await attachTemporaryAvatarUrls([await getMemberProfile(memberId)])
     const evaluationMonth = monthOffset(-1)
     let monthlyEvaluation = null
-    if (memberId === user.historicalMemberId) {
-      try {
-        const savedEvaluation = (await db.collection('activity_records').doc(`activity-${user._id}-${evaluationMonth}`).get()).data.memberEvaluation
-        monthlyEvaluation = savedEvaluation ? { ...savedEvaluation, source: 'confirmed_submission' } : null
-      } catch (_) {}
-    }
+    try {
+      const activityResult = await db.collection('activity_records').where({ historicalMemberId: memberId, month: evaluationMonth }).limit(1).get()
+      const activity = activityResult.data[0]
+      const canReadSubmissionEvaluation = activity && (activity.reviewStatus === 'approved' || (memberId === user.historicalMemberId && activity.reviewStatus === 'pending_admin_review'))
+      monthlyEvaluation = canReadSubmissionEvaluation && activity.memberEvaluation
+        ? { ...activity.memberEvaluation, source: 'confirmed_submission' }
+        : null
+    } catch (_) {}
     if (!monthlyEvaluation) {
       try {
         const historicalEvaluation = (await db.collection('monthly_evaluations').doc(`evaluation-${memberId}-${evaluationMonth}`).get()).data
