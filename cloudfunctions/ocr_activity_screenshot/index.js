@@ -1,5 +1,6 @@
 const https = require('https')
 const cloud = require('wx-server-sdk')
+const { parseOcrContent } = require('./parser')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -24,33 +25,6 @@ function imageMimeType(buffer) {
   if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))) return 'image/png'
   if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp'
   return 'image/jpeg'
-}
-
-function modelContentText(content) {
-  return Array.isArray(content)
-    ? content.map(item => item && (item.text || item.content || '')).join('')
-    : String(content || '')
-}
-
-function parseOcrContent(content, imageCount) {
-  const cleaned = modelContentText(content).replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-  let parsed
-  try { parsed = JSON.parse(cleaned) } catch (_) { throw new Error('文字识别模型返回了无效 JSON') }
-  const sourceImages = Array.isArray(parsed.images) ? parsed.images : []
-  const images = Array.from({ length: imageCount }, (_, index) => {
-    const imageIndex = index + 1
-    const source = sourceImages.find(item => Number(item && item.imageIndex) === imageIndex) || sourceImages[index] || {}
-    const lines = (Array.isArray(source.lines) ? source.lines : [])
-      .map(item => typeof item === 'string' ? item : String(item && item.text || ''))
-      .map(item => item.trim()).filter(Boolean).slice(0, 120).map(item => item.slice(0, 180))
-    const confidence = Number(source.confidence)
-    return { imageIndex, lines, confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0 }
-  })
-  if (!images.some(image => image.lines.length)) throw new Error('文字识别模型未读取到有效文字')
-  return {
-    images,
-    notes: Array.isArray(parsed.notes) ? parsed.notes.map(item => String(item).slice(0, 120)).slice(0, 5) : []
-  }
 }
 
 function requestJson(options, headers, body) {
@@ -97,6 +71,7 @@ async function recognizeText(fileIds) {
   const requestBody = JSON.stringify({
     model: OCR_MODEL,
     temperature: 0,
+    max_tokens: 1600,
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: '你只负责逐字抄录图片文字，禁止进行业务判断；必须返回严格 JSON。' },

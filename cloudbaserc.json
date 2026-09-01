@@ -14,6 +14,10 @@
       ]
     },
     {
+      "name": "ocr_activity_screenshot",
+      "timeout": 60
+    },
+    {
       "name": "review_activity_submissions",
       "timeout": 60
     },
