@@ -56,9 +56,9 @@
 
 `_id`、`clubId`、`userId`、`historicalMemberId`、`month`、`activityType`、`rawValue`、`rawUnit`、`equivalentKm`、`evidenceFileIds`、`evidenceFileId`、`previousEvidenceFileIds`、`recognitionStatus`、`recognition`、`memberConfirmedEquivalentKm`、`memberReviewedActivities`、`memberEvaluation`、`adminReviewedActivities`、`adminApprovedEquivalentKm`、`adminReviewedByUserId`、`adminReviewedByAlias`、`adminReviewedAt`、`adminVoidedByUserId`、`adminVoidedByAlias`、`adminVoidedAt`、`adminVoidReason`、`revision`、`submittedAt`、`reviewStatus`
 
-`activityType` 为 `running`、`cycling`、`swimming`、`jump_rope`、`elevation` 或 `custom`。`custom` 必须由管理员审核并记录换算系数。
+`activityType` 为 `running`、`cycling`、`swimming`、`jump_rope` 或 `elevation`。其他运动当前不自动换算，需线下商议后由管理员按后续扩展流程处理；步行、健走和散步明确排除。
 
-截图提交以“成员 + 月份”保存一个当前提交文档；一次可提交 1 至 3 张截图，当前批次保存于 `evidenceFileIds`，未主动作废的重传前一批可暂存于 `previousEvidenceFileIds`。`recognition.ocr` 保存 `local-vsr` 逐图抄录的原文；`recognition.activities` 保存 `local-premium` 引用 OCR 行后判断出的运动类型、原始值、单位、截图序号、证据行号和云端计算的等效公里数。成员逐项核对后的“是否计入、原始数值、服务端重新计算的等效公里数”保存到 `memberReviewedActivities`。`memberEvaluation` 保存阶段性评价正文、标题、模型名和基于的提交版本；它只使用结构化跑量摘要，不发送截图。状态按 `analyzing`、`recognized`、`failed`、`cancelled`、`pending_member_confirmation`、`pending_admin_review`、`withdrawn` 流转。成员取消识别、撤回待审核提交或管理员作废时，全部关联云端截图立即删除并清空引用；其他有效截图仅保留最近三个提交月份，超期清理不删除跑量、识别、审核或结算记录。
+截图提交以“成员 + 月份”保存一个当前提交文档；一次可提交 1 至 3 张截图，当前批次保存于 `evidenceFileIds`，未主动作废的重传前一批可暂存于 `previousEvidenceFileIds`。`recognition.ocr` 保存 `local-vsr` 逐图抄录的原文；`recognition.activities` 保存 `local-premium` 引用 OCR 行后判断出的运动类型、原始值、单位、截图序号、证据行号和云端计算的等效公里数。成员逐项核对后的“是否计入、原始数值、服务端重新计算的等效公里数”保存到 `memberReviewedActivities`。`memberEvaluation` 保存阶段性评价正文、标题、模型名和基于的提交版本；它只使用结构化跑量摘要，不发送截图。识别状态覆盖 `ocr_analyzing`、`ocr_completed`、`analyzing`、`recognized`、`failed`、`cancelled`；复核状态覆盖 `pending_member_confirmation`、`pending_admin_review`、`approved`、`withdrawn`、`voided`。成员取消识别、撤回待审核提交或管理员作废时，全部关联云端截图立即删除并清空引用；其他有效截图仅保留最近三个提交月份，超期清理不删除跑量、识别、审核或结算记录。
 
 ### monthly_settlements
 
@@ -91,7 +91,7 @@
 1. 先导入完整艺名清单，再导入每个艺名、每个月份的双单元格原始数据；空单元格也保留记录。
 2. 数字导入为历史等效公里数；`交/收 XX 元` 解析为 `fundAmount`，同时保留原始文本与来源单元格。
 3. 不足以可靠还原跑量、缺口或连续未达标次数的记录标为 `legacy_unverified`，由管理员核对；不伪造计算结果。
-4. 以 2026-07 的 `-257.00` 建立历史结转流水；2026-08 起由系统流水自动累计。
+4. 以 `2021-10` 的期初余额 `+102.00` 元、53 条历史月度缴入和 8 条历史支取/调整重建总账；截至 2026-07 余额为 `-257.00` 元，2026-08 起由系统确认流水持续累计。
 
 ## 封闭成员准入
 

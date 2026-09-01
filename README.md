@@ -55,7 +55,7 @@
 - 客户端：原生微信小程序。
 - 后端：微信云开发 CloudBase，环境 `cloud1-d3gu11p800a6f5c2a`。
 - 数据：历史成员、历史月度记录、用户绑定、截图提交、月度结算、公积金流水与月度评价。
-- AI：视觉模型仅用于用户主动上传的运动截图识别；文本模型仅接收结构化跑量摘要生成评价。密钥仅存云函数环境变量，不进入客户端或 Git。
+- AI：视觉模型只负责逐图抄录用户主动上传的运动截图；文本模型根据 OCR 原文判断目标月份的运动量，并根据结构化跑量摘要生成阶段性评价。密钥仅存云函数环境变量，不进入客户端或 Git。
 
 核心云函数包括：`get_current_user`、`claim_historical_identity`、`get_historical_dashboard`、`ocr_activity_screenshot`、`submit_activity_screenshot`、`review_activity_submissions`、`cleanup_activity_evidence`、`generate_monthly_evaluation`、`manage_fund_ledger` 和 `claim_review_access`。
 
@@ -75,7 +75,7 @@
 3. 审核备注应说明：小程序为封闭跑团，正式成员需历史艺名认领；审核员请从注册页进入“微信审核员体验入口”，用临时审核码查看隔离演示数据。审核码仅在本次审核期间提供，审核通过后应立即更换或清空。
 4. 审核通过后，再在“版本管理”选择发布；发布前再次核验云函数环境变量、管理员身份和历史账本余额。
 
-本次版本的能力范围和审核说明见 [v1.2.0 发布说明](docs/releases/v1.2.0.md)。
+本次版本的能力范围、近期修复和审核说明见 [v1.3.14 发布说明](docs/releases/v1.3.14.md)。
 
 ## 边界与注意事项
 

@@ -23,12 +23,24 @@
 
 截图识别由两个函数串联：`ocr_activity_screenshot` 调用 `local-vsr` 抄录原文，多图时每张截图分别调用一次并保存分片；全部分片完成后，客户端再调用 `submit_activity_screenshot`，由后者调用 `local-premium` 统一判断运动总量并在服务端换算。每张 OCR 调用和最终判断都拥有独立的 60 秒云函数窗口。部署新 OCR 函数后，必须在其 CloudBase 配置中设置与现有识别函数相同的 `RUNNING_CLUB_AI_API_KEY`；密钥不能写入源码或小程序端。模型协议、换算规则和完整环境变量说明见 [../docs/ai/screenshot-recognition.md](../docs/ai/screenshot-recognition.md)。
 
-部署完成后，确认 `activity_records` 集合保持客户端不可读写。函数首次成功调用时会按“用户 + 月份”写入当前提交记录；管理员审核与结算功能将在后续阶段接入。
+部署完成后，确认 `activity_records` 集合保持客户端不可读写。函数首次成功调用时会按“用户 + 月份”写入当前提交记录；成员确认后由 `review_activity_submissions` 完成管理员审核，并由月度结算及公积金确认流程写入 `monthly_settlements` 与 `fund_ledger`。
 
 ## 当前已实现的函数
 
-- `get_current_user`：读取或创建当前微信用户。
+- `get_current_user`：读取或创建当前微信用户，并返回认领、管理员或审核体验状态。
+- `suggest_historical_aliases`：根据微信昵称提供历史艺名匹配建议，不直接占用身份。
+- `claim_historical_identity`：以事务方式完成历史艺名唯一认领。
+- `save_profile_avatar`：保存用户主动选择并上传的微信头像文件 ID。
+- `get_historical_dashboard`：返回真实历史看板、累计跑量、个人分析及最终审核数据覆盖结果。
+- `ocr_activity_screenshot`：逐张调用视觉模型抄录截图原文并保存 OCR 分片。
+- `submit_activity_screenshot`：判断 OCR 原文、服务端换算、成员确认、取消及撤回。
+- `review_activity_submissions`：管理员审核、修正、通过或作废，并处理上月未提交及未达标成员。
+- `generate_monthly_evaluation`：一次性生成并持久化成员月度运动评价。
+- `manage_fund_ledger`：读取公积金公示账本，并为管理员执行带用途的支取。
+- `cleanup_activity_evidence`：按最近三个提交月份清理过期截图。
+- `claim_review_access`：提供与真实跑团数据隔离的微信审核体验入口。
+- `import_legacy_history`：分批导入历史艺名和月度台账；导入数据文件不进入 Git 仓库。
 
-> `update_profile` 是早期演示函数，不符合“仅历史成员可注册”的准入规则。请不要部署它；后续会由 `claim_historical_identity` 替代。
+> `update_profile` 是早期演示函数，不符合“仅历史成员可注册”的准入规则。请不要部署它；正式认领已由 `claim_historical_identity` 实现。
 
-- `import_legacy_history`：分批导入本地生成的历史艺名和月度台账。首次以 `{ "offset": 0 }` 调用，后续将返回的 `nextOffset` 作为下一次入参，直到 `completed` 为 `true`；导入数据文件不会进入 Git 仓库。
+历史导入首次以 `{ "offset": 0 }` 调用，后续将返回的 `nextOffset` 作为下一次入参，直到 `completed` 为 `true`。
