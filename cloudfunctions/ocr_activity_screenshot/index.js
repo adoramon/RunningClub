@@ -141,7 +141,7 @@ async function startBatch(records, recordId, user, month, evidenceFileIds) {
     evidenceFileId: evidenceFileIds[0], evidenceFileIds, ocrBatchId: batchId,
     previousEvidenceFileIds: [...new Set([...oldEvidenceFileIds, ...previousEvidenceFileIds])].filter(fileId => !evidenceFileIds.includes(fileId)).slice(-12),
     recognitionStatus: 'ocr_analyzing', reviewStatus: 'pending_member_confirmation',
-    ocrPart1: null, ocrPart2: null, ocrPart3: null,
+    ocrPart1: {}, ocrPart2: {}, ocrPart3: {},
     updatedAt: db.serverDate(), submittedAt: db.serverDate(), revision: Number(previous && previous.revision || 0) + 1
   }
   await records.doc(recordId).set({ data: baseRecord })
