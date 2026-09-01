@@ -1,5 +1,6 @@
 const cloud = require('wx-server-sdk')
 const { approvedActivityKm, overlayApprovedActivities, approvedActivitiesRevision } = require('./lifetime')
+const { profileHistoryStatus } = require('./history-status')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -83,17 +84,10 @@ function hasParticipationData(record) {
   return isNumber(record.targetKm) || isNumber(record.equivalentKm) || isNumber(record.fundAmount)
 }
 
-function profileHistoryStatus(record) {
-  if (!isNumber(record.calculatedKm) && !isNumber(record.fundAmount)) return { actualText: '—', statusLabel: '提前请假', statusTop: '提前', statusBottom: '请假', statusClass: 'status-leave' }
-  if (isNumber(record.fundAmount)) return { actualText: formatKm(record.calculatedKm), statusLabel: '已缴基金', statusTop: '已缴', statusBottom: '基金', statusClass: 'status-fund' }
-  if (isNumber(record.calculatedKm) && (!isNumber(record.targetKm) || record.calculatedKm >= record.targetKm)) return { actualText: formatKm(record.calculatedKm), statusLabel: '达成目标', statusTop: '达成', statusBottom: '目标', statusClass: 'status-achieved' }
-  return { actualText: formatKm(record.calculatedKm), statusLabel: '已缴基金', statusTop: '已缴', statusBottom: '基金', statusClass: 'status-fund' }
-}
-
 function calendarRingMeta(record, statusClass) {
   const actualKm = isNumber(record.calculatedKm) ? record.calculatedKm : 0
   const completionPct = isNumber(record.targetKm) && record.targetKm > 0 ? Math.round(actualKm / record.targetKm * 100) : 0
-  const ringColor = statusClass === 'status-achieved' ? '#3E9962' : statusClass === 'status-fund' ? '#D3A12A' : '#D67A3B'
+  const ringColor = statusClass === 'status-achieved' ? '#3E9962' : statusClass === 'status-fund' ? '#D3A12A' : statusClass === 'status-missing' ? '#C9574B' : '#D67A3B'
   return {
     completionPct,
     ringTextClass: completionPct >= 100 ? 'ring-text-wide' : '',
