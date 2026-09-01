@@ -133,9 +133,41 @@ function buildRecentTrend(joinedHistory) {
   })
 }
 
-function buildMemberProfile(member, linkedUser, rawRecords) {
+function approvedActivityKm(record) {
+  if (!record || record.reviewStatus !== 'approved') return null
+  const value = record.adminApprovedEquivalentKm === undefined ? record.memberConfirmedEquivalentKm : record.adminApprovedEquivalentKm
+  return isNumber(value) ? round(value) : null
+}
+
+function mergeFinalizedMemberRecords(rawRecords, activityRecords = [], settlements = []) {
+  const recordsByMonth = new Map(rawRecords.map(record => [record.month, { ...record }]))
+  activityRecords.forEach(activity => {
+    const equivalentKm = approvedActivityKm(activity)
+    if (!activity.month || !isNumber(equivalentKm)) return
+    const current = recordsByMonth.get(activity.month) || { month: activity.month, legacyMemberKey: activity.historicalMemberId }
+    recordsByMonth.set(activity.month, { ...current, equivalentKm, approvedActivityId: activity._id })
+  })
+  settlements.forEach(settlement => {
+    if (!settlement.month || !['fund_paid', 'leave'].includes(settlement.status)) return
+    const current = recordsByMonth.get(settlement.month) || { month: settlement.month, legacyMemberKey: settlement.historicalMemberId }
+    if (settlement.status === 'leave') {
+      recordsByMonth.set(settlement.month, { ...current, equivalentKm: null, fundAmount: null, adminDisposition: 'leave', settlementId: settlement._id })
+      return
+    }
+    recordsByMonth.set(settlement.month, {
+      ...current,
+      equivalentKm: isNumber(settlement.equivalentKm) ? round(settlement.equivalentKm) : (isNumber(current.equivalentKm) ? current.equivalentKm : 0),
+      fundAmount: isNumber(settlement.fundDue) ? round(settlement.fundDue) : current.fundAmount,
+      adminDisposition: 'fund_paid', settlementId: settlement._id
+    })
+  })
+  return [...recordsByMonth.values()]
+}
+
+function buildMemberProfile(member, linkedUser, rawRecords, activityRecords = [], settlements = []) {
   const currentMonth = monthOffset(0)
-  const chronologicalHistory = deriveRecords(rawRecords).filter(record => record.month < currentMonth)
+  const finalizedRecords = mergeFinalizedMemberRecords(rawRecords, activityRecords, settlements)
+  const chronologicalHistory = deriveRecords(finalizedRecords).filter(record => record.month < currentMonth)
   const firstParticipationIndex = chronologicalHistory.findIndex(hasParticipationData)
   const joinedHistory = firstParticipationIndex >= 0 ? chronologicalHistory.slice(firstParticipationIndex) : []
   const actualHistory = joinedHistory.filter(record => isNumber(record.calculatedKm))
@@ -203,15 +235,17 @@ async function getLifetimeStats() {
 
 async function getMemberProfile(memberId) {
   if (!memberId || typeof memberId !== 'string') throw new Error('成员标识无效')
-  const [memberResult, recordsResult, linkedUserResult] = await Promise.all([
+  const [memberResult, recordsResult, linkedUserResult, activitiesResult, settlementsResult] = await Promise.all([
     db.collection('historical_members').doc(memberId).get(),
     db.collection('historical_monthly_records').where({ legacyMemberKey: memberId }).orderBy('month', 'desc').limit(100).get(),
-    db.collection('users').where({ historicalMemberId: memberId }).field({ nickname: true, wechatNickname: true, avatarFileId: true }).limit(1).get()
+    db.collection('users').where({ historicalMemberId: memberId }).field({ nickname: true, wechatNickname: true, avatarFileId: true }).limit(1).get(),
+    db.collection('activity_records').where({ historicalMemberId: memberId, reviewStatus: 'approved' }).limit(100).get(),
+    db.collection('monthly_settlements').where({ historicalMemberId: memberId }).limit(100).get()
   ])
   const member = memberResult.data
   if (!member) throw new Error('未找到该成员的历史记录')
   const linkedUser = linkedUserResult.data[0]
-  return buildMemberProfile(member, linkedUser, recordsResult.data)
+  return buildMemberProfile(member, linkedUser, recordsResult.data, activitiesResult.data, settlementsResult.data)
 }
 
 exports.main = async (event = {}) => {
@@ -332,7 +366,9 @@ exports.main = async (event = {}) => {
   const historicalFundLastMonth = summaryRecordsResult.data.reduce((sum, record) => sum + (isNumber(record.fundAmount) ? record.fundAmount : 0), 0)
   const ledgerFundLastMonth = ledgerResult.data.filter(entry => entry.month === summaryMonth && entry.entryType === 'member_payment').reduce((sum, entry) => sum + (isNumber(entry.amount) ? entry.amount : 0), 0)
   const fundAddedLastMonth = round(historicalFundLastMonth + ledgerFundLastMonth)
-  const [profile] = await attachTemporaryAvatarUrls([buildMemberProfile(memberResult.data, user, ownRecordsResult.data)])
+  const ownActivityRecords = monthActivitiesResult.data.filter(record => record.historicalMemberId === user.historicalMemberId)
+  const ownSettlements = settlementsResult.data.filter(record => record.historicalMemberId === user.historicalMemberId)
+  const [profile] = await attachTemporaryAvatarUrls([buildMemberProfile(memberResult.data, user, ownRecordsResult.data, ownActivityRecords, ownSettlements)])
   const activeActivityMemberIds = new Set(monthActivitiesResult.data.filter(record => !['cancelled', 'withdrawn', 'voided', 'recognition_failed', 'failed'].includes(record.reviewStatus)).map(record => record.historicalMemberId))
   const settledMemberIds = new Set(settlementsResult.data.map(record => record.historicalMemberId))
   const missingSubmissionCount = summaryRecordsResult.data.filter(record => isNumber(record.targetKm) && !isNumber(record.equivalentKm) && !isNumber(record.fundAmount) && !settledMemberIds.has(record.legacyMemberKey) && !activeActivityMemberIds.has(record.legacyMemberKey)).length

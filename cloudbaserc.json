@@ -16,6 +16,10 @@
     {
       "name": "review_activity_submissions",
       "timeout": 60
+    },
+    {
+      "name": "get_historical_dashboard",
+      "timeout": 60
     }
   ]
 }
