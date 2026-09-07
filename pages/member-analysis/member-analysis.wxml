@@ -8,14 +8,14 @@
       </view>
       <view class="report-period">{{latest.month}} · 上月运动战报</view>
       <view class="report-main">
-        <view class="report-numbers"><view class="report-actual">{{latest.actualText}}<text> km</text></view><view class="report-target">实际跑量 / 承诺 {{latest.targetText}} km</view><view class="report-status">{{latest.statusLabel}}</view></view>
+        <view class="report-numbers"><view class="report-actual {{latest.actualText.length > 8 ? 'number-extra-long' : latest.actualText.length > 6 ? 'number-long' : ''}}">{{latest.actualText}}<text> km</text></view><view class="report-target">实际跑量 / 承诺 {{latest.targetText}} km</view><view class="report-status">{{latest.statusLabel}}</view></view>
         <view class="hero-ring" style="{{latest.ringStyle}}"><view class="hero-ring-core"><view>{{latest.pctText}}<text wx:if="{{latest.pctText !== '—'}}">%</text></view><text>目标达成</text></view></view>
       </view>
       <view class="report-reference"><view><text>{{target}}<text class="unit"> km</text></text><label>最近承诺</label></view><view><text>{{average}}<text class="unit"> km</text></text><label>历史月均</label></view><view><text>{{best}}<text class="unit"> km</text></text><label>历史最高</label></view></view>
     </view>
     <view class="lifetime-row">
-      <view class="lifetime-distance"><view class="small-label">一路累计跑过</view><view class="lifetime-number">{{totalKmText}}<text> km</text></view><view class="lifetime-caption">每一步，都算数</view></view>
-      <view class="lifetime-fund"><view class="small-label">累计公积金贡献</view><view class="lifetime-number"><text>¥ </text>{{profile.totalFundAmountText}}</view><view class="lifetime-caption">与跑团一起成长</view></view>
+      <view class="lifetime-distance"><view class="small-label">一路累计跑过</view><view class="lifetime-number {{totalKmText.length > 10 ? 'number-extra-long' : totalKmText.length > 8 ? 'number-long' : ''}}">{{totalKmText}}<text> km</text></view><view class="lifetime-caption">每一步，都算数</view></view>
+      <view class="lifetime-fund"><view class="small-label">累计公积金贡献</view><view class="lifetime-number {{profile.totalFundAmountText.length > 10 ? 'number-extra-long' : profile.totalFundAmountText.length > 8 ? 'number-long' : ''}}"><text>¥ </text>{{profile.totalFundAmountText}}</view><view class="lifetime-caption">与跑团一起成长</view></view>
     </view>
     <view wx:if="{{profile.monthlyEvaluation}}" class="evaluation-card">
       <view class="evaluation-eyebrow"><text>✦ 运动小结</text><text>{{evaluationMonth}}</text></view>
