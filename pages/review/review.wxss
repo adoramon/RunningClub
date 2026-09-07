@@ -14,3 +14,33 @@
 .evidence-preview-image { width:100%; height:76vh; border-radius:20rpx; background:#101B16; box-shadow:0 20rpx 60rpx rgba(0,0,0,.28); }
 .evidence-close-btn { display:flex; align-items:center; justify-content:center; width:82rpx; height:82rpx; margin:26rpx auto 0; padding:0; border:2rpx solid rgba(255,255,255,.72); border-radius:50%; background:rgba(255,255,255,.14); color:#FFF; font-size:56rpx; font-weight:300; line-height:78rpx; }
 .evidence-close-btn::after { border:none; }
+
+/* 管理工具与成员操作分层：页头选人，卡片身份行直接代传。 */
+.review-heading { display:flex; align-items:center; justify-content:space-between; margin:24rpx 0 28rpx; gap:20rpx; }
+.review-heading .title { margin:0; font-size:46rpx; letter-spacing:1rpx; }
+.heading-caption { margin-top:10rpx; color:#88948D; font-size:23rpx; }
+.upload-picker { flex-shrink:0; }
+.upload-tool { display:flex; align-items:center; gap:8rpx; padding:17rpx 22rpx; border:1rpx solid #CCDCD2; border-radius:999rpx; color:#24654D; background:#F0F5F0; font-size:23rpx; font-weight:600; }
+.upload-tool-plus { font-size:30rpx; line-height:1; font-weight:400; }
+.review-summary { display:flex; padding:23rpx 0; margin-bottom:32rpx; border-top:1rpx solid #DDE5DD; border-bottom:1rpx solid #DDE5DD; }
+.review-summary > view { flex:1; display:flex; align-items:center; justify-content:center; gap:12rpx; color:#7D8981; font-size:21rpx; }
+.review-summary > view + view { border-left:1rpx solid #DDE5DD; }
+.review-summary .summary-number { color:#265B43; font-size:34rpx; font-weight:700; font-variant-numeric:tabular-nums; }
+.queue-count { color:#365547; font-size:26rpx; margin-bottom:16rpx; }
+.missing-card { padding:28rpx 28rpx 0; box-shadow:none; border:1rpx solid #E3E9E3; }
+.member-copy { min-width:0; }
+.member-copy > view:first-child { overflow-wrap:break-word; }
+.member-upload-btn { flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:8rpx; min-width:112rpx; margin:0 0 0 12rpx; padding:0 18rpx; height:58rpx; line-height:58rpx; border:1rpx solid #CCDCD2; border-radius:999rpx; background:#FFF; color:#24654D; font-size:23rpx; font-weight:600; }
+.member-upload-btn::after,.missing-actions button::after { border:none; }
+.member-upload-btn text { color:#6D8C7C; font-size:25rpx; }
+.missing-card .missing-metrics { gap:0; padding:22rpx 0 16rpx; margin-top:20rpx; border-top:1rpx solid #EDF0EB; }
+.missing-card .missing-metrics > view { padding:0; border-radius:0; background:transparent; }
+.missing-card .missing-metrics > view + view { padding-left:24rpx; border-left:1rpx solid #EDF0EB; }
+.missing-card .missing-metrics > view > view { font-size:34rpx; font-variant-numeric:tabular-nums; }
+.missing-card .fund-due { color:#8C744D; }
+.missing-card .fund-rule { margin:0 0 22rpx; color:#90968B; font-size:19rpx; line-height:1.6; }
+.missing-actions { display:flex; align-items:center; justify-content:space-between; gap:18rpx; border-top:1rpx solid #EDF0EB; padding:6rpx 0; }
+.missing-actions button { margin:0; padding:12rpx 0; min-height:72rpx; background:transparent; font-size:23rpx; line-height:48rpx; }
+.missing-leave-action { color:#8B795C; }
+.missing-payment-action { color:#356A50; font-weight:600; }
+.missing-payment-action text { margin-left:8rpx; font-size:30rpx; font-weight:400; }
