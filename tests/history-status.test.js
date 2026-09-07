@@ -9,5 +9,6 @@ assert.deepEqual(profileHistoryStatus({ targetKm: 60, calculatedKm: null, fundAm
 })
 assert.equal(profileHistoryStatus({ targetKm: 60, calculatedKm: 60 }).statusClass, 'status-achieved')
 assert.equal(profileHistoryStatus({ targetKm: 60, calculatedKm: 30, fundAmount: 90 }).statusClass, 'status-fund')
+assert.equal(profileHistoryStatus({ targetKm: 60, calculatedKm: 30 }).statusLabel, '待缴基金')
 
 console.log('历史月份状态测试通过')

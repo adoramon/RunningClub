@@ -123,6 +123,10 @@ function buildRecentTrend(joinedHistory) {
     return {
       month,
       label: `${month.slice(2, 4)}/${month.slice(5, 7)}`,
+      targetKm: record && isNumber(record.targetKm) ? round(record.targetKm) : null,
+      hasActual: Boolean(record && isNumber(record.calculatedKm)),
+      statusLabel: record ? profileHistoryStatus(record).statusLabel : '无记录',
+      statusClass: record ? profileHistoryStatus(record).statusClass : 'status-missing',
       actualKm: record && isNumber(record.calculatedKm) ? round(record.calculatedKm) : 0
     }
   })
@@ -160,6 +164,9 @@ function buildMemberProfile(member, linkedUser, rawRecords, activityRecords = []
     return {
       month: record.month,
       targetText: formatKm(record.targetKm),
+      actualKm: isNumber(record.calculatedKm) ? round(record.calculatedKm) : null,
+      targetKm: isNumber(record.targetKm) ? round(record.targetKm) : null,
+      reviewLabel: activityRecords.some(activity => activity.month === record.month) ? '管理员已审核' : record.adminDisposition ? '管理员已确认' : isNumber(record.calculatedKm) || isNumber(record.fundAmount) ? '历史台账记录' : '暂无审核记录',
       participationStatus: isNumber(record.targetKm) ? 'active' : 'historical_inactive',
       ...status,
       ...calendarRingMeta(record, status.statusClass)
@@ -272,7 +279,7 @@ exports.main = async (event = {}) => {
         monthlyEvaluation = historicalEvaluation && historicalEvaluation.evaluation ? { ...historicalEvaluation.evaluation, source: 'historical_import' } : null
       } catch (_) {}
     }
-    return { ...profile, isMe: memberId === user.historicalMemberId, monthlyEvaluation }
+    return { ...profile, summaryMonth: evaluationMonth, isMe: memberId === user.historicalMemberId, monthlyEvaluation: monthlyEvaluation ? { ...monthlyEvaluation, month: evaluationMonth } : null }
   }
 
   const summaryMonth = monthOffset(-1)
