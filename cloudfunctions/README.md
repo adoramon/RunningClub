@@ -19,6 +19,10 @@
 
 部署 `cleanup_activity_evidence` 后需将函数超时设为 60 秒。新版微信开发者工具和云开发控制台可能只读展示触发器，此时使用项目根目录 `cloudbaserc.json` 与官方命令 `tcb fn trigger create cleanup_activity_evidence -e cloud1-d3gu11p800a6f5c2a --yes` 创建。触发器只需配置一次；后续普通代码更新不会改变保留周期。
 
+## 管理员代传
+
+v1.4.0 起，OCR、提交和评价函数接受 `targetMemberId`。云函数根据当前微信身份验证管理员权限，跑量归属目标历史成员，操作人单独审计。三个函数必须连同各自的 `submission-subject.js` 一起部署；审核队列函数也需更新。无需新增集合或模型环境变量。
+
 ## 截图识别函数
 
 截图识别由两个函数串联：`ocr_activity_screenshot` 调用 `local-vsr` 抄录原文，多图时每张截图分别调用一次并保存分片；全部分片完成后，客户端再调用 `submit_activity_screenshot`，由后者调用 `local-premium` 统一判断运动总量并在服务端换算。每张 OCR 调用和最终判断都拥有独立的 60 秒云函数窗口。部署新 OCR 函数后，必须在其 CloudBase 配置中设置与现有识别函数相同的 `RUNNING_CLUB_AI_API_KEY`；密钥不能写入源码或小程序端。模型协议、换算规则和完整环境变量说明见 [../docs/ai/screenshot-recognition.md](../docs/ai/screenshot-recognition.md)。

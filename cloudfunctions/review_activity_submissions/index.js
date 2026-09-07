@@ -220,12 +220,14 @@ async function currentAdmin() {
 }
 
 function publicReview(record, usersById, membersById) {
-  const user = usersById.get(record.userId) || {}
+  const user = usersById.get(record.userId) || [...usersById.values()].find(item => item.historicalMemberId === record.historicalMemberId) || {}
   const member = membersById.get(record.historicalMemberId) || {}
   const reviewed = Array.isArray(record.memberReviewedActivities) && record.memberReviewedActivities.length
     ? record.memberReviewedActivities : ((record.recognition && record.recognition.activities) || [])
   return {
     submissionId: record._id,
+    submissionSource: record.submissionSource || 'member',
+    submittedByName: record.submittedByName || '',
     memberId: record.historicalMemberId,
     month: record.month,
     memberName: user.wechatNickname || user.nickname || member.alias || '未知成员',
@@ -275,7 +277,7 @@ exports.main = async (event = {}) => {
   if (action === 'list') {
     const [pending, usersResult, membersResult, missingSubmissions, pendingFundPayments] = await Promise.all([
       records.where({ reviewStatus: 'pending_admin_review' }).limit(100).get(),
-      db.collection('users').field({ _id: true, nickname: true, wechatNickname: true, avatarFileId: true }).limit(100).get(),
+      db.collection('users').field({ _id: true, historicalMemberId: true, nickname: true, wechatNickname: true, avatarFileId: true }).limit(100).get(),
       db.collection('historical_members').limit(100).get(),
       findMissingSubmissions(),
       findPendingFundPayments()
@@ -287,7 +289,12 @@ exports.main = async (event = {}) => {
       attachTemporaryAvatarUrls(missingSubmissions),
       attachTemporaryAvatarUrls(pendingFundPayments)
     ])
-    return { reviews, missingSubmissions: missing, pendingFundPayments: fundPayments }
+    const drafts = await records.where({ month: summaryMonth(), submittedByUserId: admin._id, submissionSource: 'admin_proxy' }).limit(100).get()
+    const resumable = drafts.data.filter(record => !['pending_admin_review', 'approved'].includes(record.reviewStatus)).map(record => ({
+      memberId: record.historicalMemberId, displayName: (membersById.get(record.historicalMemberId) || {}).alias || '跑团成员'
+    }))
+    const uploadMembers = [...new Map([...missing, ...resumable].map(member => [member.memberId, member])).values()]
+    return { reviews, missingSubmissions: missing, pendingFundPayments: fundPayments, uploadMembers }
   }
 
   if (action === 'approve') {

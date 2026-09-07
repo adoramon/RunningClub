@@ -1,4 +1,5 @@
 const https = require('https')
+const { resolveSubject } = require('./submission-subject')
 const cloud = require('wx-server-sdk')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
@@ -212,13 +213,14 @@ exports.main = async (event = {}) => {
     if (!ADMIN_MEMBER_IDS.has(user.historicalMemberId)) throw new Error('仅管理员可批量回填历史评价')
     return backfillAllHistoricalEvaluations(month, event.memberIds)
   }
-  const recordRef = db.collection('activity_records').doc(recordIdFor(user._id, month))
+  const subject = await resolveSubject(db, user, event, month)
+  const recordRef = db.collection('activity_records').doc(subject.recordId)
   let record
   try { record = (await recordRef.get()).data } catch (_) { return { evaluation: null, reason: 'no_confirmed_submission' } }
   if (!record || !isNumber(record.memberConfirmedEquivalentKm) || !['pending_admin_review', 'approved'].includes(record.reviewStatus)) return { evaluation: null, reason: 'no_confirmed_submission' }
   const existing = record.memberEvaluation
   if (existing && existing.basedOnRevision === Number(record.revision || 0) && existing.content) return { evaluation: existing, cached: true }
-  const evaluation = await generateCurrentSubmissionEvaluation(user, record, month)
+  const evaluation = await generateCurrentSubmissionEvaluation(subject.user, record, month)
   const latest = (await recordRef.get()).data
   if (!latest || Number(latest.revision || 0) !== Number(record.revision || 0) || !['pending_admin_review', 'approved'].includes(latest.reviewStatus)) {
     return { evaluation: null, reason: 'submission_changed' }

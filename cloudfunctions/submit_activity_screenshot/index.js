@@ -1,4 +1,5 @@
 const https = require('https')
+const { resolveSubject, assertCanOperate } = require('./submission-subject')
 const cloud = require('wx-server-sdk')
 const { deterministicMonthlySummary } = require('./monthly-summary')
 
@@ -454,14 +455,16 @@ async function currentUser() {
 }
 
 exports.main = async (event = {}) => {
-  const user = await currentUser()
+  const actor = await currentUser()
   const month = previousMonth()
-  const recordId = recordIdFor(user._id, month)
+  const subject = await resolveSubject(db, actor, event, month)
+  assertCanOperate(subject, actor, event.action || 'get')
+  const { user, recordId, audit } = subject
   const action = String(event.action || 'get')
   const records = db.collection('activity_records')
 
   if (action === 'get') {
-    try { return { submission: publicSubmission((await records.doc(recordId).get()).data) } } catch (_) { return { submission: null, month } }
+    return { submission: subject.existing ? publicSubmission(subject.existing) : null, month, targetMemberName: subject.memberName }
   }
 
   if (action === 'confirm') {
@@ -474,6 +477,7 @@ exports.main = async (event = {}) => {
       : (event.confirmedEquivalentKm === '' || event.confirmedEquivalentKm === undefined ? suggested : Number(event.confirmedEquivalentKm))
     if (!Number.isFinite(supplied) || supplied < 0 || supplied > 10000) throw new Error('请确认有效的等效跑量')
     await records.doc(recordId).update({ data: {
+      confirmedByUserId: actor._id, confirmedByMemberId: actor.historicalMemberId,
       memberConfirmedEquivalentKm: round(supplied), memberConfirmedAt: db.serverDate(),
       memberReviewedActivities: reviewedActivities || [], reviewStatus: 'pending_admin_review', updatedAt: db.serverDate()
     } })
@@ -563,10 +567,11 @@ exports.main = async (event = {}) => {
   const evidenceFileId = evidenceFileIds[0]
   let previous = null
   try { previous = (await records.doc(recordId).get()).data } catch (_) {}
+  if (previous && ['pending_admin_review', 'approved'].includes(previous.reviewStatus)) throw new Error('当前月份已有不可覆盖的提交记录')
   const previousEvidenceFileIds = Array.isArray(previous && previous.evidenceFileIds) ? previous.evidenceFileIds : []
   const oldEvidenceFileIds = Array.isArray(previous && previous.previousEvidenceFileIds) ? previous.previousEvidenceFileIds : []
   const baseRecord = {
-    submissionKey: recordId, userId: user._id, historicalMemberId: user.historicalMemberId, month,
+    ...audit, submissionKey: recordId, userId: user._id, historicalMemberId: user.historicalMemberId, month,
     evidenceFileId, evidenceFileIds, previousEvidenceFileIds: [...new Set([...oldEvidenceFileIds, ...previousEvidenceFileIds])].filter(fileId => !evidenceFileIds.includes(fileId)).slice(-12),
     recognitionStatus: 'analyzing', reviewStatus: 'pending_member_confirmation',
     updatedAt: db.serverDate(), submittedAt: db.serverDate(), revision: Number(previous && previous.revision || 0) + 1

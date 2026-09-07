@@ -1,5 +1,6 @@
 <view class="page">
   <view class="page-brand"><image class="page-logo" src="/assets/images/dongcheng-xijiu-logo.png" mode="aspectFit" /><view class="eyebrow">{{month}} · PROOF OF RUN</view></view>
+  <view wx:if="{{targetMemberId}}" class="tip">管理员代传 · {{targetMemberName || '正在验证成员身份…'}} · {{month}}<text>确认后进入审核队列</text></view>
   <view class="title"><text>提交上月</text><text>运动记录</text></view>
   <view class="tip"><text>●</text> 上传月度截图，系统会逐张识别原文，再统一分析并换算等效跑量。</view>
 
@@ -11,7 +12,7 @@
     </view>
     <view wx:if="{{images.length}}" class="replace-images" bindtap="chooseImages">重新选择截图</view>
     <view class="recognition-note">可合并多张不同的运动记录；请勿重复上传同一份月度总量截图。支持跑步、骑行、游泳、跳绳、累计爬升。</view>
-    <button class="primary-btn submit" loading="{{loading}}" bindtap="recognize">智能识别并汇总</button>
+    <button class="primary-btn submit" disabled="{{!ready || loading}}" loading="{{loading}}" bindtap="recognize">智能识别并汇总</button>
   </view>
 
   <view wx:if="{{submission && submission.recognitionStatus === 'recognized' && submission.reviewStatus === 'pending_member_confirmation'}}" class="card result-card">
@@ -25,7 +26,8 @@
     <view class="result-actions"><button class="cancel-btn" disabled="{{loading}}" bindtap="cancelRecognition">取消本次识别</button><button class="primary-btn submit confirm-btn" loading="{{loading}}" bindtap="confirm">确认并提交审核</button></view>
   </view>
 
-  <view wx:if="{{submission && submission.reviewStatus === 'pending_admin_review'}}" class="card status-card"><view class="status-main"><view class="status-icon">✓</view><view><view class="status-title">已提交管理员审核</view><view class="status-copy">本次确认计入 {{submission.memberConfirmedEquivalentKm}} km。审核通过后才会进入月度结算。</view></view></view><button class="withdraw-submission-btn" loading="{{loading}}" bindtap="withdrawSubmission">作废本次提交并重新上传</button></view>
+  <view wx:if="{{submission && submission.reviewStatus === 'pending_admin_review'}}" class="card status-card"><view class="status-main"><view class="status-icon">✓</view><view><view class="status-title">已提交管理员审核</view><view class="status-copy">本次确认计入 {{submission.memberConfirmedEquivalentKm}} km。审核通过后才会进入月度结算。</view></view></view><button wx:if="{{!targetMemberId}}" class="withdraw-submission-btn" loading="{{loading}}" bindtap="withdrawSubmission">作废本次提交并重新上传</button></view>
+  <view wx:if="{{submission.reviewStatus === 'approved'}}" class="card status-card">该成员上月跑量已审核通过，请勿重复提交。</view>
   <view wx:if="{{recognitionErrorText}}" class="error-hint">{{recognitionErrorText}}</view>
   <view wx:if="{{submission && submission.reviewStatus === 'cancelled'}}" class="cancelled-hint">上一次识别已取消，请重新选择需要汇总的截图。</view>
   <view wx:if="{{submission && submission.reviewStatus === 'withdrawn'}}" class="voided-hint">上一次待审核提交已由你作废，请重新选择截图提交。</view>

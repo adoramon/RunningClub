@@ -1,4 +1,5 @@
 const https = require('https')
+const { resolveSubject, assertCanOperate } = require('./submission-subject')
 const cloud = require('wx-server-sdk')
 const { parseOcrContent } = require('./parser')
 
@@ -104,35 +105,45 @@ function evidenceFileIdsFrom(event) {
   return evidenceFileIds
 }
 
-async function startBatch(records, recordId, user, month, evidenceFileIds) {
+async function startBatch(records, recordId, user, month, evidenceFileIds, audit) {
+  return db.runTransaction(async transaction => {
+  const recordRef = transaction.collection('activity_records').doc(recordId)
   let previous = null
-  try { previous = (await records.doc(recordId).get()).data } catch (_) {}
+  try { previous = (await recordRef.get()).data } catch (error) {
+    if (!/not exist|not found|不存在|DATABASE_DOCUMENT_NOT_EXIST/i.test(String(error.message || error.errMsg))) throw error
+  }
+  if (audit.submissionSource === 'admin_proxy' && previous &&
+      !['cancelled', 'withdrawn', 'voided', 'recognition_failed', 'failed'].includes(previous.reviewStatus) &&
+      previous.submittedByUserId !== audit.submittedByUserId) throw new Error('该成员已有其他人正在处理的提交')
   if (previous && ['pending_admin_review', 'approved'].includes(previous.reviewStatus)) throw new Error('当前月份已有不可覆盖的提交记录')
   const previousEvidenceFileIds = Array.isArray(previous && previous.evidenceFileIds) ? previous.evidenceFileIds : []
   const oldEvidenceFileIds = Array.isArray(previous && previous.previousEvidenceFileIds) ? previous.previousEvidenceFileIds : []
   const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
   const baseRecord = {
-    submissionKey: recordId, userId: user._id, historicalMemberId: user.historicalMemberId, month,
+    ...audit, submissionKey: recordId, userId: user._id, historicalMemberId: user.historicalMemberId, month,
     evidenceFileId: evidenceFileIds[0], evidenceFileIds, ocrBatchId: batchId,
     previousEvidenceFileIds: [...new Set([...oldEvidenceFileIds, ...previousEvidenceFileIds])].filter(fileId => !evidenceFileIds.includes(fileId)).slice(-12),
     recognitionStatus: 'ocr_analyzing', reviewStatus: 'pending_member_confirmation',
     ocrPart1: {}, ocrPart2: {}, ocrPart3: {},
     updatedAt: db.serverDate(), submittedAt: db.serverDate(), revision: Number(previous && previous.revision || 0) + 1
   }
-  await records.doc(recordId).set({ data: baseRecord })
+  await recordRef.set({ data: baseRecord })
   return { batchId, baseRecord }
+  })
 }
 
 exports.main = async (event = {}) => {
-  const user = await currentUser()
+  const actor = await currentUser()
   const month = previousMonth()
-  const recordId = recordIdFor(user._id, month)
+  const subject = await resolveSubject(db, actor, event, month)
+  assertCanOperate(subject, actor, event.action || 'recognize')
+  const { user, recordId, audit } = subject
   const records = db.collection('activity_records')
   const action = String(event.action || 'recognize')
 
   if (action === 'start') {
     const evidenceFileIds = evidenceFileIdsFrom(event)
-    const started = await startBatch(records, recordId, user, month, evidenceFileIds)
+    const started = await startBatch(records, recordId, user, month, evidenceFileIds, audit)
     return { batchId: started.batchId, month, evidenceCount: evidenceFileIds.length }
   }
 
@@ -192,7 +203,7 @@ exports.main = async (event = {}) => {
 
   // 兼容尚未升级的小程序体验版：旧客户端仍可整批调用，新客户端使用 start/recognize_one/complete。
   const evidenceFileIds = evidenceFileIdsFrom(event)
-  await startBatch(records, recordId, user, month, evidenceFileIds)
+  await startBatch(records, recordId, user, month, evidenceFileIds, audit)
   try {
     const result = await recognizeText(evidenceFileIds)
     await records.doc(recordId).update({ data: {

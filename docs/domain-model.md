@@ -60,6 +60,8 @@
 
 截图提交以“成员 + 月份”保存一个当前提交文档；一次可提交 1 至 3 张截图，当前批次保存于 `evidenceFileIds`，未主动作废的重传前一批可暂存于 `previousEvidenceFileIds`。`recognition.ocr` 保存 `local-vsr` 逐图抄录的原文；`recognition.activities` 保存 `local-premium` 引用 OCR 行后判断出的运动类型、原始值、单位、截图序号、证据行号和云端计算的等效公里数。成员逐项核对后的“是否计入、原始数值、服务端重新计算的等效公里数”保存到 `memberReviewedActivities`。`memberEvaluation` 保存阶段性评价正文、标题、模型名和基于的提交版本；它只使用结构化跑量摘要，不发送截图。识别状态覆盖 `ocr_analyzing`、`ocr_completed`、`analyzing`、`recognized`、`failed`、`cancelled`；复核状态覆盖 `pending_member_confirmation`、`pending_admin_review`、`approved`、`withdrawn`、`voided`。成员取消识别、撤回待审核提交或管理员作废时，全部关联云端截图立即删除并清空引用；其他有效截图仅保留最近三个提交月份，超期清理不删除跑量、识别、审核或结算记录。
 
+管理员代传使用 `submissionSource=admin_proxy`，另存 `submittedByUserId`、`submittedByMemberId`、`submittedByName` 和确认人字段。未认领成员的 `userId` 为空，`historicalMemberId` 仍为真实历史成员标识；所有提交入口优先按历史成员与月份查找已有活动记录，认领后不会新建重复记录。
+
 ### monthly_settlements
 
 `clubId`、`userId`、`historicalMemberId`、`month`、`targetKm`、`equivalentKm`、`shortfallKm`、`isCompleted`、`failureStreak`、`fundRatePerKm`、`fundDue`、`status`、`reviewedByUserId`、`reviewedByAlias`、`reviewedAt`

@@ -30,43 +30,43 @@ function getMemberHistoricalProfile(memberId) {
   return wx.cloud.callFunction({ name: 'get_historical_dashboard', data: { mode: 'profile', memberId } }).then(result => result.result)
 }
 
-function getActivitySubmission() {
-  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'get' } }).then(result => result.result)
+function getActivitySubmission(targetMemberId = '') {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'get', targetMemberId } }).then(result => result.result)
 }
 
-async function recognizeActivityScreenshots(evidenceFileIds) {
-  const started = await wx.cloud.callFunction({ name: 'ocr_activity_screenshot', data: { action: 'start', evidenceFileIds } })
+async function recognizeActivityScreenshots(evidenceFileIds, targetMemberId = '') {
+  const started = await wx.cloud.callFunction({ name: 'ocr_activity_screenshot', data: { action: 'start', evidenceFileIds, targetMemberId } })
   const batchId = started.result && started.result.batchId
   if (!batchId) throw new Error('未能创建截图识别任务')
   for (let index = 0; index < evidenceFileIds.length; index += 1) {
     try {
       await wx.cloud.callFunction({
         name: 'ocr_activity_screenshot',
-        data: { action: 'recognize_one', batchId, imageIndex: index + 1, evidenceFileId: evidenceFileIds[index] }
+        data: { action: 'recognize_one', targetMemberId, batchId, imageIndex: index + 1, evidenceFileId: evidenceFileIds[index] }
       })
     } catch (error) {
       console.warn(`第 ${index + 1} 张截图 OCR 调用失败`, error)
     }
   }
-  const completed = await wx.cloud.callFunction({ name: 'ocr_activity_screenshot', data: { action: 'complete', batchId } })
-  if (!completed.result || !completed.result.ocrCompleted) return getActivitySubmission()
-  return judgeActivityScreenshot()
+  const completed = await wx.cloud.callFunction({ name: 'ocr_activity_screenshot', data: { action: 'complete', batchId, targetMemberId } })
+  if (!completed.result || !completed.result.ocrCompleted) return getActivitySubmission(targetMemberId)
+  return judgeActivityScreenshot(targetMemberId)
 }
 
-function judgeActivityScreenshot() {
-  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'judge' } }).then(result => result.result)
+function judgeActivityScreenshot(targetMemberId = '') {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'judge', targetMemberId } }).then(result => result.result)
 }
 
-function confirmActivitySubmission({ reviewedActivities, confirmedEquivalentKm }) {
-  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'confirm', reviewedActivities, confirmedEquivalentKm } }).then(result => result.result)
+function confirmActivitySubmission({ reviewedActivities, confirmedEquivalentKm, targetMemberId = '' }) {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'confirm', reviewedActivities, confirmedEquivalentKm, targetMemberId } }).then(result => result.result)
 }
 
-function cancelActivityRecognition() {
-  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'cancel' } }).then(result => result.result)
+function cancelActivityRecognition(targetMemberId = '') {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'cancel', targetMemberId } }).then(result => result.result)
 }
 
-function withdrawPendingActivitySubmission() {
-  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'withdraw' } }).then(result => result.result)
+function withdrawPendingActivitySubmission(targetMemberId = '') {
+  return wx.cloud.callFunction({ name: 'submit_activity_screenshot', data: { action: 'withdraw', targetMemberId } }).then(result => result.result)
 }
 
 function getPendingActivityReviews() {
@@ -89,8 +89,8 @@ function confirmPendingFundPayment({ memberId }) {
   return wx.cloud.callFunction({ name: 'review_activity_submissions', data: { action: 'confirm_fund_payment', memberId } }).then(result => result.result)
 }
 
-function generateMonthlyEvaluation() {
-  return wx.cloud.callFunction({ name: 'generate_monthly_evaluation' }).then(result => result.result)
+function generateMonthlyEvaluation(targetMemberId = '') {
+  return wx.cloud.callFunction({ name: 'generate_monthly_evaluation', data: { targetMemberId } }).then(result => result.result)
 }
 
 function getFundLedger() {

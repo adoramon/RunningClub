@@ -67,14 +67,22 @@ async function resolveEvidenceUrls(reviews) {
 }
 
 Page({
-  data: { reviews: [], missingSubmissions: [], pendingFundPayments: [], loading: true, actingId: '', previewImageUrl: '' },
+  chooseUploadMember(event) {
+    const member = (this.data.uploadMembers || [])[Number(event.detail.value)]
+    if (member) this.uploadForMember({ currentTarget: { dataset: { id: member.memberId } } })
+  },
+  uploadForMember(event) {
+    const memberId = event.currentTarget.dataset.id
+    wx.navigateTo({ url: `/pages/upload/upload?targetMemberId=${encodeURIComponent(memberId)}` })
+  },
+  data: { uploadMembers: [], reviews: [], missingSubmissions: [], pendingFundPayments: [], loading: true, actingId: '', previewImageUrl: '' },
   onShow() { this.loadReviews() },
   async loadReviews() {
     this.setData({ loading: true })
     try {
       const result = await getPendingActivityReviews()
       const reviews = await resolveEvidenceUrls((result.reviews || []).map(enrichReview))
-      this.setData({ reviews, missingSubmissions: result.missingSubmissions || [], pendingFundPayments: result.pendingFundPayments || [] })
+      this.setData({ reviews, uploadMembers: result.uploadMembers || [], missingSubmissions: result.missingSubmissions || [], pendingFundPayments: result.pendingFundPayments || [] })
       return result
     } catch (error) {
       console.error('读取审核队列失败', error)

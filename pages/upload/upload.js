@@ -33,15 +33,19 @@ function clientUnitValid(activity) {
 
 Page({
   data: { month: previousMonth(), images: [], submission: null, activities: [], reviewActivities: [], evidenceFiles: [], reviewTotalText: '0.00', recognitionErrorText: '', loading: false, recognizing: false },
+  onLoad(options = {}) { this.setData({ targetMemberId: options.targetMemberId || '', targetMemberName: '', ready: false }) },
   onShow() { this.loadSubmission() },
   async loadSubmission() {
     try {
       this.setData({ recognitionErrorText: '' })
-      const { submission } = await getActivitySubmission()
+      const { submission, targetMemberName } = await getActivitySubmission(this.data.targetMemberId)
+      this.setData({ targetMemberName, ready: true })
       if (!submission) return
       this.applySubmission(submission)
       if (submission.recognitionStatus === 'ocr_completed') await this.resumeJudgement()
     } catch (error) {
+      this.setData({ ready: false })
+      wx.showToast({ title: error.message || '无法读取提交对象', icon: 'none' })
       console.error('读取上月提交记录失败', error)
     }
   },
@@ -49,7 +53,7 @@ Page({
     if (this.data.loading) return
     this.setData({ loading: true, recognizing: true, recognitionErrorText: '' })
     try {
-      const { submission } = await judgeActivityScreenshot()
+      const { submission } = await judgeActivityScreenshot(this.data.targetMemberId)
       this.applySubmission(submission)
       if (submission.recognitionStatus === 'recognized') wx.showToast({ title: '分析完成，请确认结果', icon: 'success' })
     } catch (error) {
@@ -111,6 +115,7 @@ Page({
     this.setData({ reviewActivities, reviewTotalText: this.reviewTotalText(reviewActivities) })
   },
   async recognize() {
+    if (!this.data.ready || this.data.loading) return
     if (!this.data.images.length) return wx.showToast({ title: '请先选择运动记录截图', icon: 'none' })
     this.setData({ loading: true, recognizing: true, recognitionErrorText: '' })
     try {
@@ -120,7 +125,7 @@ Page({
         const cloudPath = `activity-proofs/${this.data.month}/${Date.now()}-${index + 1}-${Math.random().toString(36).slice(2, 8)}.${suffix}`
         return wx.cloud.uploadFile({ cloudPath, filePath: image.path })
       }))
-      const { submission } = await recognizeActivityScreenshots(uploaded.map(item => item.fileID))
+      const { submission } = await recognizeActivityScreenshots(uploaded.map(item => item.fileID), this.data.targetMemberId)
       this.applySubmission(submission)
       if (submission.recognitionStatus === 'recognized') wx.showToast({ title: '识别完成，请确认结果', icon: 'success' })
       else {
@@ -141,10 +146,10 @@ Page({
     if (!reviewedActivities.some(item => item.included)) return wx.showToast({ title: '请至少计入一项运动', icon: 'none' })
     this.setData({ loading: true })
     try {
-      const { submission } = await confirmActivitySubmission({ reviewedActivities, confirmedEquivalentKm: this.data.reviewTotalText })
+      const { submission } = await confirmActivitySubmission({ reviewedActivities, confirmedEquivalentKm: this.data.reviewTotalText, targetMemberId: this.data.targetMemberId })
       this.applySubmission(submission)
       wx.showToast({ title: '已提交，等待管理员审核', icon: 'success' })
-      generateMonthlyEvaluation().catch(error => console.warn('阶段性评价稍后生成', error))
+      generateMonthlyEvaluation(this.data.targetMemberId).catch(error => console.warn('阶段性评价稍后生成', error))
     } catch (error) {
       console.error('确认跑量失败', error)
       wx.showToast({ title: '提交失败，请稍后重试', icon: 'none' })
@@ -162,7 +167,7 @@ Page({
         if (!result.confirm) return
         this.setData({ loading: true })
         try {
-          const { submission } = await cancelActivityRecognition()
+          const { submission } = await cancelActivityRecognition(this.data.targetMemberId)
           this.applySubmission(submission)
           this.setData({ images: [] })
           wx.showToast({ title: '已取消本次识别', icon: 'success' })
@@ -185,7 +190,7 @@ Page({
         if (!result.confirm) return
         this.setData({ loading: true })
         try {
-          const { submission } = await withdrawPendingActivitySubmission()
+          const { submission } = await withdrawPendingActivitySubmission(this.data.targetMemberId)
           this.applySubmission(submission)
           this.setData({ images: [] })
           wx.showToast({ title: '已作废，请重新提交', icon: 'success' })
